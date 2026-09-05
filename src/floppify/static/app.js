@@ -45,6 +45,12 @@ async function command(path, extra = {}) {
   } catch (error) { toast(error.message, true); }
 }
 
+function setPlaying(playing) {
+  state.playing = playing;
+  $("play").classList.toggle("playing", playing);
+  $("play").setAttribute("aria-label", playing ? "Pause" : "Play");
+}
+
 function renderStatus(data) {
   state.connected = data.provider.connected;
   if (!state.selectedDevice && data.selected_device_id) state.selectedDevice = data.selected_device_id;
@@ -64,13 +70,11 @@ function renderStatus(data) {
   if (data.error) toast(data.error, true);
   const player = data.player;
   if (!player) {
-    state.playing = false;
-    $("play").textContent = "▶";
+    setPlaying(false);
     return;
   }
-  state.playing = player.is_playing;
+  setPlaying(player.is_playing);
   state.shuffle = player.shuffle;
-  $("play").textContent = player.is_playing ? "Ⅱ" : "▶";
   $("shuffle").classList.toggle("selected", player.shuffle);
   $("track").textContent = player.track || "Nothing playing";
   $("artist").textContent = player.artists || "Spotify";

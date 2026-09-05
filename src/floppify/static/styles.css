@@ -36,12 +36,17 @@ h1 { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; 
 .progress div { width: 0; height: 100%; background: #fff; transition: width .4s linear; }
 .time { display: flex; justify-content: space-between; margin-top: 5px; color: var(--muted); font: 10px/1 monospace; }
 .controls { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 20px); margin-top: 10px; }
-.icon-button, .play-button { display: grid; place-items: center; border: 0; color: #ddd; background: transparent; }
-.icon-button { width: 48px; height: 48px; font: 18px/1 monospace; }
-.icon-button.selected { color: var(--green); }
-.icon-button:active { color: var(--green); transform: scale(.94); }
-.play-button { width: 58px; height: 58px; padding: 0 0 0 3px; border-radius: 50%; background: #fff; color: #000; font-size: 23px; font-weight: 800; }
-.play-button:active { transform: scale(.93); }
+.control-button { display: grid; place-items: center; width: 46px; height: 46px; border: 0; border-radius: 50%; background: transparent; color: var(--green); cursor: pointer; transition: color .12s ease, background .12s ease, transform .12s ease; }
+.control-button svg { width: 22px; height: 22px; fill: currentColor; display: block; }
+.control-button:hover { color: #fff; }
+.control-button:active { transform: scale(.92); }
+.control-button.selected { background: var(--green); color: #000; }
+.control-button.selected:hover { color: #000; }
+.control-button--primary { background: var(--green); color: #000; }
+.control-button--primary:hover { color: #000; }
+.control-button .icon-pause { display: none; }
+.control-button.playing .icon-play { display: none; }
+.control-button.playing .icon-pause { display: block; }
 .device-bar { z-index: 2; display: grid; grid-template-columns: auto minmax(170px, 1fr) minmax(190px, .8fr); align-items: center; gap: 14px; min-height: 66px; padding: 0 22px max(env(safe-area-inset-bottom), 0px); border-top: 1px solid #262626; background: #111; }
 .device-bar > label:first-child { display: flex; align-items: center; gap: 8px; color: var(--green); font: 700 10px/1 monospace; letter-spacing: .1em; }
 .speaker { font-size: 18px; }
@@ -58,8 +63,8 @@ select { width: 100%; height: 40px; padding: 0 34px 0 12px; border: 1px solid va
   .art-wrap { width: 145px; }
   .album { margin-bottom: 8px; }
   .controls { margin-top: 3px; }
-  .icon-button { width: 40px; height: 40px; }
-  .play-button { width: 48px; height: 48px; }
+  .control-button { width: 42px; height: 42px; }
+  .control-button svg { width: 20px; height: 20px; }
   .device-bar { grid-template-columns: auto 1fr minmax(150px, .7fr); min-height: 58px; padding: 0 14px max(env(safe-area-inset-bottom), 0px); gap: 9px; }
 }
 @media (max-width: 520px) and (orientation: portrait) {

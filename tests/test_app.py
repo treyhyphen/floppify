@@ -81,12 +81,14 @@ def test_health_status_and_index(tmp_path: Path) -> None:
         assert page.status_code == 200
         assert "FLOPPIFY" in page.text
         assert "viewport-fit=cover" in page.text
-        assert "styles.css?v=mobile-footer-1" in page.text
-        assert "app.js?v=sonos-1" in page.text
+        assert "styles.css?v=controls-green-1" in page.text
+        assert "app.js?v=controls-green-1" in page.text
+        assert "control-button" in page.text
         css = client.get("/static/styles.css")
         assert css.status_code == 200
         assert "height: 100dvh" in css.text
         assert "safe-area-inset-bottom" in css.text
+        assert ".control-button--primary" in css.text
 
 
 def test_playback_commands_are_provider_neutral(tmp_path: Path) -> None:

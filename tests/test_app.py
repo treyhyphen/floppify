@@ -61,6 +61,7 @@ def test_health_status_and_index(tmp_path: Path) -> None:
         assert "FLOPPIFY" in page.text
         assert "viewport-fit=cover" in page.text
         assert "styles.css?v=mobile-footer-1" in page.text
+        assert "app.js?v=controls-1" in page.text
         css = client.get("/static/styles.css")
         assert css.status_code == 200
         assert "height: 100dvh" in css.text

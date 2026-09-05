@@ -136,7 +136,11 @@ class SpotifyProvider(PlaybackProvider):
         if shuffle is not None:
             await self.command("shuffle", device_id=device_id, enabled=shuffle)
         await self._request(
-            "PUT", "/me/player/play", device_id=device_id, json={"context_uri": uri}
+            "PUT",
+            "/me/player/play",
+            device_id=device_id,
+            expect_json=False,
+            json={"context_uri": uri},
         )
 
     async def command(self, command: str, **kwargs: Any) -> None:
@@ -150,23 +154,28 @@ class SpotifyProvider(PlaybackProvider):
         }
         if command in routes:
             method, path = routes[command]
-            await self._request(method, path, device_id=device_id)
+            await self._request(method, path, device_id=device_id, expect_json=False)
             return
         if command == "volume":
             await self._request(
                 "PUT", "/me/player/volume", device_id=device_id,
+                expect_json=False,
                 params={"volume_percent": int(kwargs["volume_percent"])},
             )
             return
         if command == "shuffle":
             await self._request(
                 "PUT", "/me/player/shuffle", device_id=device_id,
+                expect_json=False,
                 params={"state": str(bool(kwargs["enabled"])).lower()},
             )
             return
         if command == "transfer":
             await self._request(
-                "PUT", "/me/player", json={"device_ids": [kwargs["device_id"]], "play": False}
+                "PUT",
+                "/me/player",
+                expect_json=False,
+                json={"device_ids": [kwargs["device_id"]], "play": False},
             )
             return
         raise SpotifyError(f"Unsupported Spotify command: {command}")
@@ -178,6 +187,7 @@ class SpotifyProvider(PlaybackProvider):
         *,
         device_id: str | None = None,
         allow_empty: bool = False,
+        expect_json: bool = True,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Send an authenticated API request, refreshing the token when needed."""
@@ -204,10 +214,21 @@ class SpotifyProvider(PlaybackProvider):
                 message = detail.get("message") if isinstance(detail, dict) else str(detail)
             except (ValueError, AttributeError):
                 message = response.text
-            raise SpotifyError(f"Spotify API {response.status_code}: {message or 'request failed'}")
-        if not response.content:
+            message = message or "request failed"
+            if "no active device" in message.lower():
+                message = "No active Spotify device; open Spotify on a device, then refresh devices"
+            elif "restriction violated" in message.lower():
+                message = (
+                    "This control is unavailable for the current Spotify device "
+                    "or playback state"
+                )
+            raise SpotifyError(f"Spotify API {response.status_code}: {message}")
+        if not expect_json or not response.content:
             return {}
-        return response.json()
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise SpotifyError("Spotify returned an invalid response; try again") from exc
 
     async def _access_token(self) -> str:
         """Return a valid access token, refreshing shortly before expiry."""

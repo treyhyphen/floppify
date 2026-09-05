@@ -16,8 +16,9 @@ class FakeProvider(PlaybackProvider):
 
     name = "spotify"
 
-    def __init__(self) -> None:
+    def __init__(self, context_uri: str | None = "spotify:playlist:abc") -> None:
         self.calls: list[tuple[Any, ...]] = []
+        self.context_uri = context_uri
 
     @property
     def configured(self) -> bool:
@@ -37,7 +38,12 @@ class FakeProvider(PlaybackProvider):
         return [{"id": "pi", "name": "Floppify", "is_active": True}]
 
     async def state(self) -> dict[str, Any]:
-        return {"is_playing": True, "track": "Test Track", "duration_ms": 1000}
+        return {
+            "is_playing": True,
+            "track": "Test Track",
+            "duration_ms": 1000,
+            "context_uri": self.context_uri,
+        }
 
     async def play_context(
         self, context_uri: str, device_id: str | None = None, shuffle: bool | None = None
@@ -82,7 +88,7 @@ def test_health_status_and_index(tmp_path: Path) -> None:
         assert "FLOPPIFY" in page.text
         assert "viewport-fit=cover" in page.text
         assert "styles.css?v=controls-green-1" in page.text
-        assert "app.js?v=controls-green-1" in page.text
+        assert "app.js?v=sonos-transfer-1" in page.text
         assert "control-button" in page.text
         css = client.get("/static/styles.css")
         assert css.status_code == 200
@@ -117,6 +123,17 @@ def test_transfer_requires_device(tmp_path: Path) -> None:
         assert client.post("/api/transfer", json={}).status_code == 422
 
 
+def test_transfer_to_spotify_device(tmp_path: Path) -> None:
+    """Selecting a Spotify Connect device performs a normal Spotify transfer."""
+    provider = FakeProvider()
+    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider)
+    with TestClient(app) as client:
+        response = client.post("/api/transfer", json={"device_id": "pi"})
+        assert response.status_code == 200
+        assert response.json()["message"] == "Transferred playback"
+        assert provider.calls[-1] == ("transfer", {"device_id": "pi"})
+
+
 def test_sonos_device_selection_routes_and_persists(tmp_path: Path) -> None:
     """A selected Sonos room should receive controls and future disk playback."""
     provider = FakeProvider()
@@ -128,9 +145,12 @@ def test_sonos_device_selection_routes_and_persists(tmp_path: Path) -> None:
         devices = client.get("/api/devices").json()["devices"]
         assert {device["id"] for device in devices} == {"pi", "sonos:room"}
 
-        assert client.post("/api/transfer", json={"device_id": "sonos:room"}).status_code == 204
+        response = client.post("/api/transfer", json={"device_id": "sonos:room"})
+        assert response.status_code == 200
+        assert response.json()["message"] == "Now playing on the selected speaker"
         assert settings.selected_device_path.read_text() == "sonos:room"
-        assert output.calls[-1] == ("transfer", "sonos:room", {})
+        assert ("pause", {}) in provider.calls
+        assert output.calls[-1] == ("play", "spotify:playlist:abc", "sonos:room", None)
 
         response = client.post(
             "/api/play",
@@ -144,3 +164,16 @@ def test_sonos_device_selection_routes_and_persists(tmp_path: Path) -> None:
             True,
         )
         assert client.get("/api/status").json()["selected_device_id"] == "sonos:room"
+
+
+def test_sonos_transfer_without_context_errors(tmp_path: Path) -> None:
+    """Selecting Sonos with nothing to play surfaces an actionable error."""
+    provider = FakeProvider(context_uri=None)
+    output = FakeOutput()
+    app = create_app(
+        Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider, outputs=[output]
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/transfer", json={"device_id": "sonos:room"})
+        assert response.status_code == 409
+        assert "insert a floppy" in response.json()["detail"].lower()

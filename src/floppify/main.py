@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from .config import Settings
 from .disk import DiskWatcher
 from .models import DeviceRequest, PlayRequest, ShuffleRequest, VolumeRequest
-from .outputs import PlaybackOutput, SonosOutput
+from .outputs import OutputError, PlaybackOutput, SonosOutput
 from .providers import PlaybackProvider, SpotifyProvider
 
 LOGGER = logging.getLogger(__name__)
@@ -80,6 +80,50 @@ def create_app(
         os.chmod(temporary, 0o600)
         temporary.replace(config.selected_device_path)
 
+    async def resolve_playback_context() -> tuple[str | None, bool | None]:
+        """Resolve the context to start on a newly selected output."""
+        if watcher.current_config:
+            return watcher.current_config.uri, watcher.current_config.shuffle
+        if playback.connected:
+            try:
+                state = await playback.state()
+            except Exception:
+                state = None
+            context_uri = state.get("context_uri") if state else None
+            if context_uri:
+                return context_uri, None
+        return None, None
+
+    async def pause_active_spotify_device() -> None:
+        """Pause the currently playing Spotify device before switching outputs."""
+        if not playback.connected:
+            return
+        try:
+            state = await playback.state()
+        except Exception:
+            return
+        if state and state.get("is_playing"):
+            try:
+                await playback.command("pause")
+            except Exception:
+                LOGGER.warning("Could not pause the previous Spotify device", exc_info=True)
+
+    async def transfer_target(device_id: str) -> str:
+        """Move playback to a Spotify Connect device or a local output."""
+        output = output_for(device_id)
+        if output is None:
+            await playback.command("transfer", device_id=device_id)
+            return "Transferred playback"
+        context_uri, shuffle = await resolve_playback_context()
+        if context_uri is None:
+            raise OutputError(
+                "Nothing to play on this device yet — insert a floppy or start "
+                "Spotify playback first"
+            )
+        await pause_active_spotify_device()
+        await output.play_context(context_uri, device_id, shuffle)
+        return "Now playing on the selected speaker"
+
     async def play_disk(disk_config: Any, path: Path) -> None:
         """Start playback when the disk watcher emits a valid instruction."""
         if disk_config.provider != playback.name:
@@ -107,6 +151,8 @@ def create_app(
     def provider_error(exc: Exception) -> HTTPException:
         """Map provider failures to an actionable API response."""
         message = str(exc)
+        if isinstance(exc, OutputError):
+            return HTTPException(status_code=409, detail=message)
         status = 401 if "not connected" in message.lower() else 502
         return HTTPException(status_code=status, detail=message)
 
@@ -252,16 +298,17 @@ def create_app(
         except Exception as exc:
             raise provider_error(exc) from exc
 
-    @app.post("/api/transfer", status_code=204)
-    async def transfer(request: DeviceRequest) -> None:
-        """Transfer playback to a selected device."""
+    @app.post("/api/transfer")
+    async def transfer(request: DeviceRequest) -> dict[str, str]:
+        """Transfer playback to a selected device and persist the choice."""
         nonlocal selected_device_id
         if not request.device_id:
             raise HTTPException(status_code=422, detail="device_id is required")
         try:
-            await command_target("transfer", request.device_id)
+            message = await transfer_target(request.device_id)
             selected_device_id = request.device_id
             save_selected_device(request.device_id)
+            return {"message": message}
         except Exception as exc:
             raise provider_error(exc) from exc
 

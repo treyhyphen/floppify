@@ -44,3 +44,7 @@ class PlaybackProvider(ABC):
     @abstractmethod
     async def command(self, command: str, **kwargs: Any) -> None:
         """Execute a provider-neutral playback command."""
+
+    async def track_artwork(self, track_id: str) -> str | None:
+        """Resolve artwork for a provider-native track ID; None when unsupported."""
+        return None

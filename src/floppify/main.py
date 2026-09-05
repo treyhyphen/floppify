@@ -80,6 +80,25 @@ def create_app(
         os.chmod(temporary, 0o600)
         temporary.replace(config.selected_device_path)
 
+    artwork_cache: dict[str, str] = {}
+
+    async def resolve_artwork(player: dict[str, Any]) -> None:
+        """Fill in album artwork for a local output using the provider."""
+        track_id = player.pop("spotify_track_id", None)
+        if not track_id or not playback.connected:
+            return
+        if track_id in artwork_cache:
+            player["artwork"] = artwork_cache[track_id]
+            return
+        try:
+            url = await playback.track_artwork(track_id)
+        except Exception:
+            LOGGER.warning("Could not resolve artwork for track %s", track_id, exc_info=True)
+            return
+        if url:
+            artwork_cache[track_id] = url
+            player["artwork"] = url
+
     async def resolve_playback_context() -> tuple[str | None, bool | None]:
         """Resolve the context to start on a newly selected output."""
         if watcher.current_config:
@@ -175,6 +194,7 @@ def create_app(
         if output and selected_device_id:
             try:
                 player = await output.state(selected_device_id)
+                await resolve_artwork(player)
             except Exception as exc:  # keep kiosk useful during provider outages
                 error = str(exc)
         elif playback.connected:

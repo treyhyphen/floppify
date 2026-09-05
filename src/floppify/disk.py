@@ -21,10 +21,12 @@ class DiskWatcher:
         roots: tuple[Path, ...],
         on_insert: Callable[[DiskConfig, Path], Awaitable[None]],
         poll_seconds: float = 2.0,
+        on_eject: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
-        """Configure media roots and an asynchronous insertion callback."""
+        """Configure media roots and insertion/ejection callbacks."""
         self.roots = roots
         self.on_insert = on_insert
+        self.on_eject = on_eject
         self.poll_seconds = poll_seconds
         self.current_path: Path | None = None
         self.current_config: DiskConfig | None = None
@@ -44,9 +46,16 @@ class DiskWatcher:
         found = self._find_configs()
         self._seen.intersection_update(found)
         if not found:
+            ejected = self.current_path is not None
             self.current_path = None
             self.current_config = None
             self.error = None
+            if ejected and self.on_eject is not None:
+                try:
+                    await self.on_eject()
+                except Exception as exc:
+                    self.error = f"Stop failed: {exc}"
+                    LOGGER.warning("%s", self.error)
             return
         for path in sorted(found):
             if path in self._seen:

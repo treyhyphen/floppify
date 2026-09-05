@@ -43,6 +43,37 @@ async def test_disk_watcher_emits_new_valid_disk_once(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_disk_watcher_fires_eject_once(tmp_path: Path) -> None:
+    """Ejecting a disk should fire the eject callback exactly once."""
+    ejects = []
+
+    async def inserted(config, path):
+        return None
+
+    async def ejected():
+        ejects.append(True)
+
+    disk = tmp_path / "MIXTAPE"
+    disk.mkdir()
+    config_path = disk / "floppify.json"
+    config_path.write_text(
+        '{"provider":"spotify","type":"playlist","uri":"spotify:playlist:abc"}'
+    )
+    watcher = DiskWatcher((tmp_path,), inserted, on_eject=ejected)
+
+    await watcher.scan_once()
+    assert ejects == []
+
+    config_path.unlink()
+    await watcher.scan_once()
+    assert ejects == [True]
+
+    # A second scan while still empty must not re-fire.
+    await watcher.scan_once()
+    assert ejects == [True]
+
+
+@pytest.mark.asyncio
 async def test_disk_watcher_reports_invalid_config(tmp_path: Path) -> None:
     """Malformed disk data should be visible without invoking playback."""
     calls = []

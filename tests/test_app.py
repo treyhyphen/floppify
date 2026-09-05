@@ -1,5 +1,6 @@
 """Tests for the web UI and provider-neutral playback endpoints."""
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -92,6 +93,9 @@ class FakeOutput(PlaybackOutput):
             "context_uri": None,
             "device": {"id": device_id, "name": "Living Room", "volume_percent": 42},
         }
+
+    async def stop(self, device_id: str) -> None:
+        self.calls.append(("stop", device_id))
 
 
 def test_health_status_and_index(tmp_path: Path) -> None:
@@ -215,3 +219,28 @@ def test_status_reflects_selected_sonos_room(tmp_path: Path) -> None:
         assert status["player"]["artwork"] == "https://example.test/art/sonos-track-1.jpg"
         assert ("state", "sonos:room") in output.calls
         assert ("track_artwork", "sonos-track-1") in provider.calls
+
+
+def test_eject_stops_local_output(tmp_path: Path) -> None:
+    """Ejecting a disk should stop playback and clear the local queue."""
+    provider = FakeProvider()
+    output = FakeOutput()
+    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path), disk_poll_seconds=3600)
+    app = create_app(settings, provider, outputs=[output])
+
+    with TestClient(app) as client:
+        watcher = app.state.disk_watcher
+        client.post("/api/transfer", json={"device_id": "sonos:room"})
+
+        disk = tmp_path / "MIXTAPE"
+        disk.mkdir()
+        config_path = disk / "floppify.json"
+        config_path.write_text(
+            '{"provider":"spotify","type":"playlist","uri":"spotify:playlist:abc"}'
+        )
+        asyncio.run(watcher.scan_once())
+        assert ("play", "spotify:playlist:abc", "sonos:room", None) in output.calls
+
+        config_path.unlink()
+        asyncio.run(watcher.scan_once())
+        assert ("stop", "sonos:room") in output.calls

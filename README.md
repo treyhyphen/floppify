@@ -6,7 +6,8 @@ Floppify turns a 3½-inch floppy disk into a physical Spotify album or mixtape. 
 
 - **FastAPI backend** serves the kiosk and a provider-neutral playback API.
 - **`PlaybackProvider` interface** keeps Spotify-specific OAuth and Web API calls isolated so Plex or another provider can be added later.
-- **Disk watcher** polls mounted removable-media roots and triggers each newly inserted disk once.
+- **Disk watcher** polls mounted removable-media roots, triggers each newly inserted disk once, and stops playback (clearing any local queue) on eject.
+- **Floppy auto-mount service** (`floppify-mounter`) mounts the USB floppy read-only on insert and unmounts it on eject, since floppy media changes are a capacity change rather than a USB hotplug event.
 - **Spotify OAuth with PKCE** requires only a public client ID—no client secret is stored on the Pi.
 - **Raspotify/librespot** optionally exposes the Pi's 3.5 mm output as a Spotify Connect device named **Floppify**.
 - **Labwc/Chromium kiosk** launches the touch interface automatically at graphical login.
@@ -91,6 +92,8 @@ The resulting file is small enough for any normal 1.44 MB FAT floppy:
 ```
 
 Supported `type` values are `playlist`, `album`, and `artist`. Remove/eject the disk before inserting another one.
+
+On the Pi, the `floppify-mounter` service mounts the USB floppy drive at `/mnt/floppify` automatically when a disk is inserted and unmounts it on eject, so no manual mounting is needed. The device and mount point are configurable via `FLOPPIFY_FLOPPY_DEVICE` (default `/dev/sda`) and `FLOPPIFY_FLOPPY_MOUNT` (default `/mnt/floppify`). Ejecting the disk stops playback and clears the active queue.
 
 ## Playback devices and local audio
 

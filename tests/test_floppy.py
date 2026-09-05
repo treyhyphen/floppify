@@ -30,6 +30,23 @@ def test_thump_uses_direct_reads_across_disk(monkeypatch) -> None:
     assert offsets == [0, BLOCK_SIZE * 99, BLOCK_SIZE, BLOCK_SIZE * 98]
 
 
+def test_thump_can_override_default_seek_count(monkeypatch) -> None:
+    """A short effect can request fewer physical reads than the default pattern."""
+    offsets: list[int] = []
+    monkeypatch.setattr(os, "open", lambda *_args: 9)
+    monkeypatch.setattr(os, "lseek", lambda *_args: BLOCK_SIZE * 100)
+    monkeypatch.setattr(
+        os,
+        "preadv",
+        lambda _fd, _buffers, offset: offsets.append(offset) or BLOCK_SIZE,
+    )
+    monkeypatch.setattr(os, "close", lambda _fd: None)
+
+    FloppyThumper(device="/dev/test", seeks=6)._thump(seeks=2)
+
+    assert offsets == [0, BLOCK_SIZE * 99]
+
+
 def test_track_identity_prefers_spotify_track_id() -> None:
     player = {"spotify_track_id": "abc123", "track": "T", "album": "A", "artists": "B"}
     assert track_identity(player) == "abc123"

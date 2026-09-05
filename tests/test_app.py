@@ -121,9 +121,11 @@ class FakeThumper:
 
     def __init__(self) -> None:
         self.thumps = 0
+        self.seek_counts: list[int] = []
 
-    async def thump(self) -> None:
+    async def thump(self, seeks: int = 6) -> None:
         self.thumps += 1
+        self.seek_counts.append(seeks)
 
 
 def wait_for_thumps(thumper: FakeThumper, expected: int) -> None:
@@ -329,6 +331,7 @@ def test_transport_controls_trigger_floppy_thump(tmp_path: Path) -> None:
 
         client.post("/api/previous", json={})
         wait_for_thumps(thumper, 4)
+        assert thumper.seek_counts == [2, 2, 6, 6]
 
         # Volume and shuffle are sliders/toggles, not discrete presses.
         client.post("/api/volume", json={"volume_percent": 50})
@@ -360,6 +363,7 @@ def test_track_end_watcher_thumps_once_per_track(tmp_path: Path) -> None:
         while thumper.thumps == 0 and time.time() < deadline:
             time.sleep(0.05)
         assert thumper.thumps == 1
+        assert thumper.seek_counts == [6]
 
         # Same track still near the end: no repeat thump.
         time.sleep(0.8)

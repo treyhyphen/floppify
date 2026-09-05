@@ -19,6 +19,8 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_DEVICE = "/dev/sda"
 BLOCK_SIZE = 512
 DEFAULT_SEEKS = 6
+SHORT_SEEKS = 2
+LONG_SEEKS = DEFAULT_SEEKS
 MIN_INTERVAL = 0.12
 TRACK_END_WINDOW_MS = 1000
 
@@ -26,8 +28,8 @@ TRACK_END_WINDOW_MS = 1000
 class Thumper(Protocol):
     """Minimal interface for a floppy thump trigger (duck-typed for tests)."""
 
-    async def thump(self) -> None:
-        """Fire a debounced seek-read."""
+    async def thump(self, seeks: int = LONG_SEEKS) -> None:
+        """Fire a debounced seek-read of the requested length."""
         ...
 
 
@@ -47,17 +49,18 @@ class FloppyThumper:
         self._last = 0.0
         self._lock = asyncio.Lock()
 
-    async def thump(self) -> None:
-        """Fire one seek-read off the event loop, debounced against rapid presses."""
+    async def thump(self, seeks: int | None = None) -> None:
+        """Fire seek-reads off the event loop, debounced against rapid presses."""
         now = time.monotonic()
         if self._lock.locked() or now - self._last < self.min_interval:
             return
         async with self._lock:
             self._last = now
-            await asyncio.to_thread(self._thump)
+            await asyncio.to_thread(self._thump, seeks)
 
-    def _thump(self) -> None:
+    def _thump(self, seeks: int | None = None) -> None:
         """Read scattered sectors to shuttle the drive head for audible feedback."""
+        read_count = self.seeks if seeks is None else max(1, seeks)
         direct = getattr(os, "O_DIRECT", 0)
         try:
             fd = os.open(self.device, os.O_RDONLY | direct)
@@ -73,7 +76,7 @@ class FloppyThumper:
             if size <= 0:
                 return
             blocks = max(1, size // BLOCK_SIZE)
-            for index in range(self.seeks):
+            for index in range(read_count):
                 half = index // 2
                 offset = half % blocks if index % 2 == 0 else max(0, blocks - 1 - half)
                 try:
@@ -84,7 +87,7 @@ class FloppyThumper:
                     LOGGER.warning("Floppy tactile seek failed: %s", error)
                     break
             else:
-                LOGGER.info("Floppy tactile feedback: %d physical seeks", self.seeks)
+                LOGGER.info("Floppy tactile feedback: %d physical seeks", read_count)
         finally:
             buffer.close()
             os.close(fd)

@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from .config import Settings
 from .disk import DiskWatcher
-from .floppy import FloppyThumper, Thumper, near_track_end
+from .floppy import LONG_SEEKS, SHORT_SEEKS, FloppyThumper, Thumper, near_track_end
 from .models import DeviceRequest, PlayRequest, ShuffleRequest, VolumeRequest
 from .outputs import OutputError, PlaybackOutput, SonosOutput
 from .providers import PlaybackProvider, SpotifyProvider
@@ -53,10 +53,10 @@ def create_app(
         else None
     )
 
-    def trigger_thump() -> None:
+    def trigger_thump(seeks: int = LONG_SEEKS) -> None:
         """Fire a debounced floppy seek-read in the background, when enabled."""
         if thumper is not None:
-            asyncio.create_task(thumper.thump())
+            asyncio.create_task(thumper.thump(seeks))
 
     try:
         selected_device_id = config.selected_device_path.read_text().strip() or None
@@ -324,7 +324,7 @@ def create_app(
     @app.post("/api/play", status_code=204)
     async def play(request: PlayRequest) -> None:
         """Play the current disk context or resume current playback."""
-        trigger_thump()
+        trigger_thump(SHORT_SEEKS)
         try:
             device_id = request.device_id or selected_device_id
             context_uri = request.context_uri
@@ -343,7 +343,7 @@ def create_app(
     @app.post("/api/pause", status_code=204)
     async def pause(request: DeviceRequest) -> None:
         """Pause playback."""
-        trigger_thump()
+        trigger_thump(SHORT_SEEKS)
         try:
             await command_target("pause", request.device_id or selected_device_id)
         except Exception as exc:

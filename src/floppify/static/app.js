@@ -108,6 +108,7 @@ function renderStatus(data) {
   $("album").textContent = player.album || "";
   $("art").src = player.artwork || "/static/floppy.svg";
   $("elapsed").textContent = formatMs(player.progress_ms);
+  $("winamp-time").textContent = formatMs(player.progress_ms).padStart(5, "0");
   $("duration").textContent = formatMs(player.duration_ms);
   const percent = player.duration_ms ? (player.progress_ms / player.duration_ms) * 100 : 0;
   $("progress-fill").style.width = `${Math.min(100, percent)}%`;

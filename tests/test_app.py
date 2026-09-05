@@ -149,13 +149,14 @@ def test_health_status_and_index(tmp_path: Path) -> None:
         assert page.status_code == 200
         assert "FLOPPIFY" in page.text
         assert "viewport-fit=cover" in page.text
-        assert "skins/base.css?v=skins-1" in page.text
-        assert "skins/spotify.css?v=skin-1" in page.text
-        assert "skins/registry.js?v=skins-1" in page.text
-        assert "app.js?v=skins-1" in page.text
+        assert "skins/base.css?v=skins-2" in page.text
+        assert "skins/spotify.css?v=skin-2" in page.text
+        assert "skins/registry.js?v=skins-3" in page.text
+        assert "app.js?v=skins-2" in page.text
         assert 'id="skin"' in page.text
         assert 'class="taskbar"' in page.text
         assert "control-button" in page.text
+        assert 'class="winamp-lcd"' in page.text
         base_css = client.get("/static/skins/base.css")
         spotify_css = client.get("/static/skins/spotify.css")
         winamp_css = client.get("/static/skins/winamp98.css")
@@ -166,6 +167,8 @@ def test_health_status_and_index(tmp_path: Path) -> None:
         assert "safe-area-inset-bottom" in spotify_css.text
         assert "Windows" not in spotify_css.text
         assert ".taskbar" in winamp_css.text
+        assert "inset: 0 0 34px" in winamp_css.text
+        assert ".winamp-analyzer" in winamp_css.text
         assert 'id: "winamp98"' in registry.text
         assert ".control-button--primary" in spotify_css.text
 

@@ -30,3 +30,7 @@ class PlaybackOutput(ABC):
     @abstractmethod
     async def command(self, command: str, device_id: str, **kwargs: Any) -> None:
         """Run a provider-neutral command against a local device."""
+
+    @abstractmethod
+    async def state(self, device_id: str) -> dict[str, Any]:
+        """Return the current playback state for a local device."""

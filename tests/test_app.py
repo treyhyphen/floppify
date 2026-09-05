@@ -73,6 +73,21 @@ class FakeOutput(PlaybackOutput):
     async def command(self, command: str, device_id: str, **kwargs: Any) -> None:
         self.calls.append((command, device_id, kwargs))
 
+    async def state(self, device_id: str) -> dict[str, Any]:
+        self.calls.append(("state", device_id))
+        return {
+            "is_playing": True,
+            "shuffle": False,
+            "progress_ms": 30000,
+            "duration_ms": 180000,
+            "track": "Sonos Track",
+            "artists": "Sonos Artist",
+            "album": "Sonos Album",
+            "artwork": None,
+            "context_uri": None,
+            "device": {"id": device_id, "name": "Living Room", "volume_percent": 42},
+        }
+
 
 def test_health_status_and_index(tmp_path: Path) -> None:
     """The kiosk and read-only API should render with provider state."""
@@ -177,3 +192,19 @@ def test_sonos_transfer_without_context_errors(tmp_path: Path) -> None:
         response = client.post("/api/transfer", json={"device_id": "sonos:room"})
         assert response.status_code == 409
         assert "insert a floppy" in response.json()["detail"].lower()
+
+
+def test_status_reflects_selected_sonos_room(tmp_path: Path) -> None:
+    """The now-playing panel should read from Sonos when a room is selected."""
+    provider = FakeProvider()
+    output = FakeOutput()
+    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path))
+    app = create_app(settings, provider, outputs=[output])
+
+    with TestClient(app) as client:
+        client.post("/api/transfer", json={"device_id": "sonos:room"})
+        status = client.get("/api/status").json()
+        assert status["selected_device_id"] == "sonos:room"
+        assert status["player"]["track"] == "Sonos Track"
+        assert status["player"]["progress_ms"] == 30000
+        assert ("state", "sonos:room") in output.calls

@@ -171,7 +171,13 @@ def create_app(
         """Return provider, disk, and current playback status."""
         player = None
         error = None
-        if playback.connected:
+        output = output_for(selected_device_id)
+        if output and selected_device_id:
+            try:
+                player = await output.state(selected_device_id)
+            except Exception as exc:  # keep kiosk useful during provider outages
+                error = str(exc)
+        elif playback.connected:
             try:
                 player = await playback.state()
             except Exception as exc:  # keep kiosk useful during provider outages

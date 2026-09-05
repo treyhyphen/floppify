@@ -47,6 +47,11 @@ class SonosOutput(PlaybackOutput):
         speaker = await self._speaker(device_id)
         await asyncio.to_thread(self._command, speaker, command, kwargs)
 
+    async def state(self, device_id: str) -> dict[str, Any]:
+        """Return the room's playback state in the provider-neutral shape."""
+        speaker = await self._speaker(device_id)
+        return await asyncio.to_thread(self._state, speaker)
+
     async def _refresh(self, force: bool = False) -> None:
         """Refresh the SSDP cache when stale or explicitly requested."""
         cache_fresh = time.monotonic() - self._last_discovery < self.cache_seconds
@@ -108,6 +113,76 @@ class SonosOutput(PlaybackOutput):
                 }
             )
         return sorted(records, key=lambda item: item["name"].casefold())
+
+    @classmethod
+    def _state(cls, speaker: Any) -> dict[str, Any]:
+        """Build a provider-neutral state from the room's coordinator."""
+        coordinator = cls._coordinator(speaker)
+        try:
+            transport = coordinator.get_current_transport_info()
+            playing = transport.get("current_transport_state") == "PLAYING"
+            track = coordinator.get_current_track_info()
+            play_mode = coordinator.play_mode or "NORMAL"
+            volume = coordinator.volume
+        except SoCoException:
+            raise
+        except Exception:
+            return cls._stopped_state(speaker, playing=False)
+        return {
+            "is_playing": playing,
+            "shuffle": play_mode in {"SHUFFLE", "SHUFFLE_NOREPEAT"},
+            "progress_ms": cls._parse_time(track.get("position", "0:00")),
+            "duration_ms": cls._parse_time(track.get("duration", "0:00")),
+            "track": track.get("title") or "Nothing playing",
+            "artists": track.get("artist") or "Sonos",
+            "album": track.get("album") or "",
+            "artwork": None,
+            "context_uri": None,
+            "device": {
+                "id": cls._device_id(speaker),
+                "is_active": playing,
+                "name": speaker.player_name,
+                "supports_volume": True,
+                "type": "Speaker",
+                "volume_percent": volume,
+                "source": "sonos",
+            },
+        }
+
+    @classmethod
+    def _stopped_state(cls, speaker: Any, playing: bool) -> dict[str, Any]:
+        """Return a minimal state when the room has no current track."""
+        return {
+            "is_playing": playing,
+            "shuffle": False,
+            "progress_ms": 0,
+            "duration_ms": 0,
+            "track": None,
+            "artists": None,
+            "album": None,
+            "artwork": None,
+            "context_uri": None,
+            "device": {
+                "id": cls._device_id(speaker),
+                "is_active": playing,
+                "name": speaker.player_name,
+                "supports_volume": True,
+                "type": "Speaker",
+                "volume_percent": None,
+                "source": "sonos",
+            },
+        }
+
+    @staticmethod
+    def _parse_time(value: str | None) -> int:
+        """Convert a Sonos H:MM:SS or MM:SS duration string to milliseconds."""
+        try:
+            seconds = 0
+            for part in str(value or "0:00").split(":"):
+                seconds = seconds * 60 + int(part)
+            return seconds * 1000
+        except ValueError:
+            return 0
 
     @staticmethod
     def _default_interface_addr() -> str | None:

@@ -93,7 +93,7 @@ The resulting file is small enough for any normal 1.44 MB FAT floppy:
 
 Supported `type` values are `playlist`, `album`, and `artist`. Remove/eject the disk before inserting another one.
 
-On the Pi, the `floppify-mounter` service actively probes the USB floppy drive and mounts it at `/mnt/floppify` automatically when a disk is inserted, and unmounts + stops playback on eject, so no manual mounting is needed. Ejecting the disk stops playback and clears the active queue. The device, mount point, and poll rate are configurable via `FLOPPIFY_FLOPPY_DEVICE` (default `/dev/sda`), `FLOPPIFY_FLOPPY_MOUNT` (default `/mnt/floppify`), and `FLOPPIFY_FLOPPY_POLL` (default `0.4`).
+On the Pi, the `floppify-mounter` service actively probes the USB floppy drive and mounts it at `/mnt/floppify` automatically when a disk is inserted, and unmounts + stops playback on eject, so no manual mounting is needed. Ejecting the disk stops playback and clears the active queue. USB Mass Storage is host-polled, so there is no media-change interrupt to key off; the mounter polls fast while a disk is present and backs off while idle. The device, mount point, and poll rates are configurable via `FLOPPIFY_FLOPPY_DEVICE` (default `/dev/sda`), `FLOPPIFY_FLOPPY_MOUNT` (default `/mnt/floppify`), `FLOPPIFY_FLOPPY_POLL` (default `0.3`), and `FLOPPIFY_FLOPPY_POLL_IDLE` (default `1.5`).
 
 ## Playback devices and local audio
 

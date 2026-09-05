@@ -97,7 +97,7 @@ On the Pi, the `floppify-mounter` service actively probes the USB floppy drive a
 
 ## Tactile floppy feedback
 
-Audio is streamed, but the drive still produces its classic seek/grind noise on demand by reading scattered sectors, shuttling the head across the disk. The app triggers this for mechanical feedback:
+Audio is streamed, but the drive still produces its classic seek/grind noise on demand by reading scattered sectors with direct I/O (bypassing Linux's page cache), shuttling the head across the disk. The app triggers this for mechanical feedback:
 
 - **Transport controls** — pressing play/pause or next/previous fires a short floppy seek.
 - **Track transitions** — a background watcher fires a seek ~1 second before the current track ends, so playback feels like it's being read off the disk.

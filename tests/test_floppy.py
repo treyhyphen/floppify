@@ -1,6 +1,33 @@
-"""Tests for floppy drive effect logic (track-end detection and identity)."""
+"""Tests for floppy drive effect logic (physical reads and track-end detection)."""
 
-from floppify.floppy import near_track_end, track_identity
+import os
+
+from floppify.floppy import BLOCK_SIZE, FloppyThumper, near_track_end, track_identity
+
+
+def test_thump_uses_direct_reads_across_disk(monkeypatch) -> None:
+    """Tactile reads bypass the page cache and alternate across the disk."""
+    opened: list[tuple[str, int]] = []
+    offsets: list[int] = []
+
+    monkeypatch.setattr(
+        os,
+        "open",
+        lambda path, flags: opened.append((path, flags)) or 9,
+    )
+    monkeypatch.setattr(os, "lseek", lambda *_args: BLOCK_SIZE * 100)
+    monkeypatch.setattr(
+        os,
+        "preadv",
+        lambda _fd, _buffers, offset: offsets.append(offset) or BLOCK_SIZE,
+    )
+    monkeypatch.setattr(os, "close", lambda _fd: None)
+
+    FloppyThumper(device="/dev/test", seeks=4)._thump()
+
+    assert opened[0][0] == "/dev/test"
+    assert opened[0][1] & getattr(os, "O_DIRECT", 0) == getattr(os, "O_DIRECT", 0)
+    assert offsets == [0, BLOCK_SIZE * 99, BLOCK_SIZE, BLOCK_SIZE * 98]
 
 
 def test_track_identity_prefers_spotify_track_id() -> None:

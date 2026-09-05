@@ -126,6 +126,14 @@ class FakeThumper:
         self.thumps += 1
 
 
+def wait_for_thumps(thumper: FakeThumper, expected: int) -> None:
+    """Wait briefly for an asynchronously scheduled test thump."""
+    deadline = time.time() + 1.0
+    while thumper.thumps < expected and time.time() < deadline:
+        time.sleep(0.01)
+    assert thumper.thumps == expected
+
+
 def test_health_status_and_index(tmp_path: Path) -> None:
     """The kiosk and read-only API should render with provider state."""
     provider = FakeProvider()
@@ -311,16 +319,16 @@ def test_transport_controls_trigger_floppy_thump(tmp_path: Path) -> None:
 
     with TestClient(app) as client:
         client.post("/api/play", json={"context_uri": "spotify:album:abc"})
-        assert thumper.thumps == 1
+        wait_for_thumps(thumper, 1)
 
         client.post("/api/pause", json={})
-        assert thumper.thumps == 2
+        wait_for_thumps(thumper, 2)
 
         client.post("/api/next", json={})
-        assert thumper.thumps == 3
+        wait_for_thumps(thumper, 3)
 
         client.post("/api/previous", json={})
-        assert thumper.thumps == 4
+        wait_for_thumps(thumper, 4)
 
         # Volume and shuffle are sliders/toggles, not discrete presses.
         client.post("/api/volume", json={"volume_percent": 50})

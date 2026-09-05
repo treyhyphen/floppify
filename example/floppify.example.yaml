@@ -1,0 +1,8 @@
+# Copy this file to a floppy as floppify.json.
+# JSON does not support comments, so use example/floppify.json as the actual template.
+version: 1
+provider: spotify
+type: playlist # playlist, album, or artist
+uri: spotify:playlist:YOUR_PLAYLIST_ID
+shuffle: true
+name: My Floppy Mixtape

@@ -1,0 +1,26 @@
+[Unit]
+Description=Floppify floppy-powered music controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=err
+Group=err
+WorkingDirectory=/opt/floppify
+EnvironmentFile=-/etc/floppify.env
+ExecStart=/opt/floppify/.venv/bin/uvicorn floppify.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+StateDirectory=floppify
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/floppify
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

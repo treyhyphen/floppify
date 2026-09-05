@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#070707">
+  <title>Floppify</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="disk-icon">▣</span><strong>FLOPPIFY</strong></div>
+      <div id="disk-state" class="status-pill"><i></i><span>Waiting for disk</span></div>
+      <button id="connect" class="connect hidden" type="button">Connect Spotify</button>
+    </header>
+
+    <section class="player">
+      <div class="art-wrap">
+        <img id="art" alt="Album artwork" src="/static/floppy.svg">
+        <div id="provider-tag" class="provider-tag">SPOTIFY</div>
+      </div>
+
+      <div class="now-playing">
+        <p class="eyebrow">NOW PLAYING</p>
+        <h1 id="track">Insert a Floppy</h1>
+        <p id="artist" class="artist">Drop in a disk with floppify.json</p>
+        <p id="album" class="album">Your music will start automatically</p>
+
+        <div class="progress" aria-label="Track progress">
+          <div id="progress-fill"></div>
+        </div>
+        <div class="time"><span id="elapsed">0:00</span><span id="duration">0:00</span></div>
+
+        <div class="controls">
+          <button id="shuffle" class="icon-button" type="button" aria-label="Toggle shuffle">⤨</button>
+          <button id="previous" class="icon-button" type="button" aria-label="Previous track">◀▌</button>
+          <button id="play" class="play-button" type="button" aria-label="Play or pause">▶</button>
+          <button id="next" class="icon-button" type="button" aria-label="Next track">▌▶</button>
+          <button id="refresh" class="icon-button" type="button" aria-label="Refresh devices">↻</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="device-bar">
+      <label for="devices"><span class="speaker">◉</span> PLAY ON</label>
+      <select id="devices" aria-label="Spotify playback device"><option value="">No active devices</option></select>
+      <label class="volume" for="volume"><span>VOL</span><input id="volume" type="range" min="0" max="100" value="50"></label>
+    </footer>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

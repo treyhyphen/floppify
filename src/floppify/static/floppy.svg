@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" fill="#181818"/>
+  <rect x="35" y="24" width="186" height="208" rx="8" fill="#272727" stroke="#3a3a3a" stroke-width="4"/>
+  <path d="M58 24h139v76H58z" fill="#111"/>
+  <rect x="79" y="39" width="86" height="47" fill="#343434"/>
+  <rect x="80" y="140" width="96" height="92" fill="#111"/>
+  <circle cx="128" cy="181" r="29" fill="#1ed760"/>
+  <circle cx="128" cy="181" r="12" fill="#111"/>
+  <path d="M91 216h74" stroke="#4a4a4a" stroke-width="8"/>
+  <text x="128" y="124" fill="#1ed760" font-family="monospace" font-size="14" text-anchor="middle">NO DISK</text>
+</svg>

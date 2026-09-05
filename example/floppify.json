@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "provider": "spotify",
+  "type": "playlist",
+  "uri": "spotify:playlist:YOUR_PLAYLIST_ID",
+  "shuffle": true,
+  "name": "My Floppy Mixtape"
+}

@@ -20,13 +20,13 @@ Spotify playback control and Spotify Connect require a **Spotify Premium** accou
 1. Open <https://developer.spotify.com/dashboard> and sign in.
 2. Choose **Create app**.
 3. Set any name/description, select **Web API**, and accept Spotify's terms.
-4. In the app's settings, add this redirect URI exactly:
+4. If authorizing from another computer or phone, add this redirect URI exactly:
 
    ```text
-   http://127.0.0.1:8000/auth/spotify/callback
+   https://172.16.0.47/auth/spotify/callback
    ```
 
-   Spotify permits HTTP for loopback redirect addresses. The OAuth flow must therefore be completed in the browser running on the Pi's touchscreen.
+   Spotify requires HTTPS for every non-loopback redirect. Floppify's HTTPS installer creates a local certificate; visit `https://172.16.0.47` and accept/trust that certificate before starting authorization. For touchscreen-only authorization, the loopback URI `http://127.0.0.1:8000/auth/spotify/callback` remains valid.
 5. Copy the app's **Client ID**. A client secret is not needed.
 
 Spotify development-mode apps may require the account to be added under the dashboard's user-management section. Add the Spotify account there if authorization reports that the user is not registered.
@@ -43,21 +43,22 @@ Set:
 
 ```dotenv
 FLOPPIFY_SPOTIFY_CLIENT_ID=your_client_id_here
-FLOPPIFY_SPOTIFY_REDIRECT_URI=http://127.0.0.1:8000/auth/spotify/callback
+FLOPPIFY_SPOTIFY_REDIRECT_URI=https://172.16.0.47/auth/spotify/callback
 ```
 
-Then restart:
+Then install the HTTPS proxy and restart Floppify:
 
 ```bash
-sudo systemctl restart floppify
+sudo ./scripts/install-https.sh 172.16.0.47
 ```
 
-### 3. Authorize from the touchscreen
+### 3. Authorize Spotify
 
-1. Reboot or open `http://127.0.0.1:8000` in Chromium on the Pi.
-2. Tap **Connect Spotify**.
-3. Sign in and approve playback access.
-4. Floppify stores the refresh token at `/var/lib/floppify/spotify-token.json` with owner-only permissions. It is never committed to Git.
+Open `https://172.16.0.47`, accept the local certificate warning, then tap **Connect Spotify**. The browser starting authorization must be able to open the configured redirect URI.
+
+For touchscreen-only authorization, you can instead retain the loopback redirect and open `http://127.0.0.1:8000` on the Pi.
+
+After approval, Floppify stores the refresh token at `/var/lib/floppify/spotify-token.json` with owner-only permissions. It is never committed to Git.
 
 ## Make a Floppify disk
 
@@ -111,6 +112,7 @@ On a Pi running Raspberry Pi OS/Debian with Chromium and Labwc:
 git clone https://github.com/treyhyphen/floppify.git
 cd floppify
 sudo ./scripts/install.sh
+sudo ./scripts/install-https.sh 172.16.0.47  # OAuth from another browser
 sudo ./scripts/install-raspotify.sh  # optional local output
 sudo reboot
 ```
@@ -131,7 +133,7 @@ journalctl -u floppify -f
 systemctl status raspotify
 ```
 
-The interface also listens on the LAN at `http://PI_ADDRESS:8000`, but OAuth login should be completed on the Pi because of the loopback redirect URI.
+The backend listens on `http://PI_ADDRESS:8000`. After running `install-https.sh`, use `https://PI_ADDRESS` for LAN access and Spotify authorization. Spotify's redirect requirements are documented at <https://developer.spotify.com/documentation/web-api/concepts/redirect_uri>.
 
 ## Development
 

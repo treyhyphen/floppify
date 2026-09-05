@@ -2,11 +2,16 @@
 """Mount/unmount the floppy drive as media appears and disappears.
 
 Floppy insert/eject is a capacity change on a fixed USB device, not a USB
-hotplug event, and the kernel only re-checks media when the block device is
-opened. We poll on a fast cycle and open the device each tick to force a media
-re-check, then mount on insert and, on eject, unmount and notify the app to
-stop playback immediately. Runs as root via systemd so the mount lives in the
-host namespace and is visible to the unprivileged ``floppify`` service.
+hotplug event. USB Mass Storage is host-polled -- the drive (a CBI/UFI TEAC
+floppy) has no way to push a media-change event to the kernel, and its eject
+button is mechanical, so the kernel only discovers a change when a command is
+sent. We therefore probe by opening the block device, which forces the SCSI
+layer to re-check media.
+
+To avoid needless chatter, we poll fast only while media is present (when an
+eject could happen at any moment) and back off while idle. Runs as root via
+systemd so the mount lives in the host namespace and is visible to the
+unprivileged ``floppify`` service.
 """
 
 import logging
@@ -16,7 +21,10 @@ import time
 
 DEVICE = os.environ.get("FLOPPIFY_FLOPPY_DEVICE", "/dev/sda")
 MOUNT_POINT = os.environ.get("FLOPPIFY_FLOPPY_MOUNT", "/mnt/floppify")
-POLL_SECONDS = float(os.environ.get("FLOPPIFY_FLOPPY_POLL", "0.4"))
+# Poll interval while media is present (snappy eject detection).
+POLL_SECONDS = float(os.environ.get("FLOPPIFY_FLOPPY_POLL", "0.3"))
+# Poll interval while idle (no media) -- insert can tolerate a small delay.
+IDLE_POLL_SECONDS = float(os.environ.get("FLOPPIFY_FLOPPY_POLL_IDLE", "1.5"))
 FS_TYPE = os.environ.get("FLOPPIFY_FLOPPY_FSTYPE", "vfat")
 APP_BASE_URL = os.environ.get("FLOPPIFY_APP_URL", "http://127.0.0.1:8000")
 
@@ -103,19 +111,27 @@ def notify_eject() -> None:
 
 
 def main() -> None:
-    """Poll forever, keeping the floppy mounted exactly while media is present."""
+    """Probe forever, mounting while media is present and unmounting on eject."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-    LOGGER.info("watching %s -> %s (poll %.2fs)", DEVICE, MOUNT_POINT, POLL_SECONDS)
+    LOGGER.info(
+        "watching %s -> %s (poll %.2fs while present, %.2fs while idle)",
+        DEVICE,
+        MOUNT_POINT,
+        POLL_SECONDS,
+        IDLE_POLL_SECONDS,
+    )
     while True:
+        present = False
         try:
-            if media_present() and not is_mounted():
+            present = media_present()
+            if present and not is_mounted():
                 mount()
-            elif not media_present() and is_mounted():
+            elif not present and is_mounted():
                 unmount()
                 notify_eject()
         except Exception:
             LOGGER.exception("mounter iteration failed")
-        time.sleep(POLL_SECONDS)
+        time.sleep(POLL_SECONDS if present else IDLE_POLL_SECONDS)
 
 
 if __name__ == "__main__":

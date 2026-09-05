@@ -24,6 +24,7 @@ button { cursor: pointer; }
 .skin-picker { display: flex; align-items: center; gap: 6px; }
 .skin-picker span { white-space: nowrap; }
 .taskbar { display: none; }
+.winamp-lcd { display: none; }
 
 #toast {
   position: fixed;

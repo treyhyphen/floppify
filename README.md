@@ -109,6 +109,11 @@ The service user needs read access to the raw floppy device, granted by a udev r
 
 Use the **Skin** selector in the title bar to switch between **Floppify Green** (the original Spotify-inspired layout) and **Winamp 98** (classic Winamp styling on a Windows 98 desktop/taskbar). The choice is stored in browser `localStorage`, so the kiosk reopens with the same skin. A one-time preview can also be opened with `?skin=<skin-id>`, such as `/?skin=winamp98`, without changing the saved choice.
 
+The Winamp skin is an original CSS adaptation informed by the canonical Winamp 2.91
+`base-2.91.wsz` structure and sprite dimensions maintained by the
+[Webamp project](https://github.com/captbaritone/webamp/tree/master/packages/webamp-demo/skins).
+Floppify does not redistribute the original Nullsoft bitmap assets.
+
 To add another skin:
 
 1. Create `src/floppify/static/skins/<skin-id>.css`. The shared DOM/state rules live in `skins/base.css`; a skin owns placement, sizing, color, typography, and decoration.

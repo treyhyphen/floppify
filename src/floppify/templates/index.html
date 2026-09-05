@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta id="theme-color" name="theme-color" content="#070707">
   <title>Floppify</title>
-  <script src="/static/skins/registry.js?v=skins-1"></script>
+  <script src="/static/skins/registry.js?v=skins-3"></script>
   <script>
     (() => {
       const skins = window.FLOPPIFY_SKINS || [];
@@ -21,8 +21,8 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="/static/skins/base.css?v=skins-1">
-  <link id="skin-stylesheet" rel="stylesheet" href="/static/skins/spotify.css?v=skin-1">
+  <link rel="stylesheet" href="/static/skins/base.css?v=skins-2">
+  <link id="skin-stylesheet" rel="stylesheet" href="/static/skins/spotify.css?v=skin-2">
   <script>
     if (window.FLOPPIFY_INITIAL_SKIN) {
       document.getElementById("skin-stylesheet").href = window.FLOPPIFY_INITIAL_SKIN.stylesheet;
@@ -46,6 +46,18 @@
       </div>
 
       <div class="now-playing">
+        <div class="winamp-lcd" aria-hidden="true">
+          <div class="winamp-timer" id="winamp-time">00:00</div>
+          <div class="winamp-analyzer">
+            <span style="--level: 38%"></span><span style="--level: 72%"></span>
+            <span style="--level: 51%"></span><span style="--level: 88%"></span>
+            <span style="--level: 64%"></span><span style="--level: 44%"></span>
+            <span style="--level: 79%"></span><span style="--level: 56%"></span>
+            <span style="--level: 92%"></span><span style="--level: 47%"></span>
+          </div>
+          <div class="winamp-quality"><b>128</b><small>KBPS</small><b>44</b><small>KHZ</small></div>
+          <div class="winamp-stereo"><span>MONO</span><b>STEREO</b></div>
+        </div>
         <p class="eyebrow">NOW PLAYING</p>
         <h1 id="track">Insert a Floppy</h1>
         <p id="artist" class="artist">Drop in a disk with floppify.json</p>
@@ -90,6 +102,6 @@
     <div class="taskbar-spacer"></div>
     <div class="tray"><span class="tray-led"></span><span id="taskbar-clock">12:00 PM</span></div>
   </footer>
-  <script src="/static/app.js?v=skins-1" defer></script>
+  <script src="/static/app.js?v=skins-2" defer></script>
 </body>
 </html>

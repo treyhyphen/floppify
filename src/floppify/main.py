@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from .config import Settings
 from .disk import DiskWatcher
+from .floppy import FloppyThumper, Thumper, near_track_end
 from .models import DeviceRequest, PlayRequest, ShuffleRequest, VolumeRequest
 from .outputs import OutputError, PlaybackOutput, SonosOutput
 from .providers import PlaybackProvider, SpotifyProvider
@@ -27,6 +28,7 @@ def create_app(
     settings: Settings | None = None,
     provider: PlaybackProvider | None = None,
     outputs: list[PlaybackOutput] | None = None,
+    thumper: Thumper | None = None,
 ) -> FastAPI:
     """Create the Floppify web application with injectable dependencies."""
     config = settings or Settings()
@@ -45,6 +47,17 @@ def create_app(
             if config.sonos_enabled
             else []
         )
+    thumper = thumper or (
+        FloppyThumper(device=config.floppy_thump_device)
+        if config.floppy_thump_enabled
+        else None
+    )
+
+    def trigger_thump() -> None:
+        """Fire a debounced floppy seek-read in the background, when enabled."""
+        if thumper is not None:
+            asyncio.create_task(thumper.thump())
+
     try:
         selected_device_id = config.selected_device_path.read_text().strip() or None
     except (FileNotFoundError, PermissionError):
@@ -161,6 +174,34 @@ def create_app(
             except Exception:
                 LOGGER.warning("Could not pause Spotify on eject", exc_info=True)
 
+    async def current_player_state() -> dict[str, Any] | None:
+        """Return the active player state including any provider track id."""
+        output = output_for(selected_device_id)
+        if output and selected_device_id:
+            try:
+                return await output.state(selected_device_id)
+            except Exception:
+                return None
+        if playback.connected:
+            try:
+                return await playback.state()
+            except Exception:
+                return None
+        return None
+
+    async def track_end_watcher() -> None:
+        """Thump the floppy as a track nears its end, once per track."""
+        last_thumped: str | None = None
+        while True:
+            try:
+                player = await current_player_state()
+                should_thump, last_thumped = near_track_end(player, last_thumped)
+                if should_thump:
+                    trigger_thump()
+            except Exception:
+                LOGGER.debug("track-end watcher error", exc_info=True)
+            await asyncio.sleep(0.5)
+
     watcher = DiskWatcher(
         config.media_root_paths,
         play_disk,
@@ -172,9 +213,13 @@ def create_app(
     async def lifespan(_: FastAPI):
         config.state_dir.mkdir(parents=True, exist_ok=True)
         task = asyncio.create_task(watcher.run(), name="floppy-disk-watcher")
+        end_task = asyncio.create_task(track_end_watcher(), name="floppy-track-end-watcher")
         yield
         watcher.stop()
         await task
+        end_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await end_task
 
     app = FastAPI(title="Floppify", version="0.1.0", lifespan=lifespan)
     app.state.settings = config
@@ -279,6 +324,7 @@ def create_app(
     @app.post("/api/play", status_code=204)
     async def play(request: PlayRequest) -> None:
         """Play the current disk context or resume current playback."""
+        trigger_thump()
         try:
             device_id = request.device_id or selected_device_id
             context_uri = request.context_uri
@@ -297,6 +343,7 @@ def create_app(
     @app.post("/api/pause", status_code=204)
     async def pause(request: DeviceRequest) -> None:
         """Pause playback."""
+        trigger_thump()
         try:
             await command_target("pause", request.device_id or selected_device_id)
         except Exception as exc:
@@ -305,6 +352,7 @@ def create_app(
     @app.post("/api/next", status_code=204)
     async def next_track(request: DeviceRequest) -> None:
         """Skip to the next track."""
+        trigger_thump()
         try:
             await command_target("next", request.device_id or selected_device_id)
         except Exception as exc:
@@ -313,6 +361,7 @@ def create_app(
     @app.post("/api/previous", status_code=204)
     async def previous_track(request: DeviceRequest) -> None:
         """Return to the previous track."""
+        trigger_thump()
         try:
             await command_target("previous", request.device_id or selected_device_id)
         except Exception as exc:

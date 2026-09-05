@@ -1,6 +1,7 @@
 """Tests for the web UI and provider-neutral playback endpoints."""
 
 import asyncio
+import time
 from pathlib import Path
 from typing import Any
 
@@ -12,14 +13,29 @@ from floppify.outputs import PlaybackOutput
 from floppify.providers.base import PlaybackProvider
 
 
+def make_settings(tmp_path: Path, **overrides: Any) -> Settings:
+    """Build test settings with floppy thumping disabled by default."""
+    return Settings(
+        state_dir=tmp_path,
+        media_roots=str(tmp_path),
+        floppy_thump_enabled=False,
+        **overrides,
+    )
+
+
 class FakeProvider(PlaybackProvider):
     """Record API operations without contacting a music service."""
 
     name = "spotify"
 
-    def __init__(self, context_uri: str | None = "spotify:playlist:abc") -> None:
+    def __init__(
+        self,
+        context_uri: str | None = "spotify:playlist:abc",
+        state_override: dict[str, Any] | None = None,
+    ) -> None:
         self.calls: list[tuple[Any, ...]] = []
         self.context_uri = context_uri
+        self.state_override = state_override
 
     @property
     def configured(self) -> bool:
@@ -39,6 +55,8 @@ class FakeProvider(PlaybackProvider):
         return [{"id": "pi", "name": "Floppify", "is_active": True}]
 
     async def state(self) -> dict[str, Any]:
+        if self.state_override is not None:
+            return self.state_override
         return {
             "is_playing": True,
             "track": "Test Track",
@@ -98,10 +116,20 @@ class FakeOutput(PlaybackOutput):
         self.calls.append(("stop", device_id))
 
 
+class FakeThumper:
+    """Record floppy thumps without touching hardware."""
+
+    def __init__(self) -> None:
+        self.thumps = 0
+
+    async def thump(self) -> None:
+        self.thumps += 1
+
+
 def test_health_status_and_index(tmp_path: Path) -> None:
     """The kiosk and read-only API should render with provider state."""
     provider = FakeProvider()
-    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider)
+    app = create_app(make_settings(tmp_path), provider)
     with TestClient(app) as client:
         assert client.get("/api/health").json() == {"status": "ok", "provider": "spotify"}
         status = client.get("/api/status").json()
@@ -124,7 +152,7 @@ def test_health_status_and_index(tmp_path: Path) -> None:
 def test_playback_commands_are_provider_neutral(tmp_path: Path) -> None:
     """Touch controls should delegate through the provider contract."""
     provider = FakeProvider()
-    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider)
+    app = create_app(make_settings(tmp_path), provider)
     with TestClient(app) as client:
         response = client.post(
             "/api/play",
@@ -142,7 +170,7 @@ def test_playback_commands_are_provider_neutral(tmp_path: Path) -> None:
 
 def test_transfer_requires_device(tmp_path: Path) -> None:
     """A transfer request without a target should fail clearly."""
-    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), FakeProvider())
+    app = create_app(make_settings(tmp_path), FakeProvider())
     with TestClient(app) as client:
         assert client.post("/api/transfer", json={}).status_code == 422
 
@@ -150,7 +178,7 @@ def test_transfer_requires_device(tmp_path: Path) -> None:
 def test_transfer_to_spotify_device(tmp_path: Path) -> None:
     """Selecting a Spotify Connect device performs a normal Spotify transfer."""
     provider = FakeProvider()
-    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider)
+    app = create_app(make_settings(tmp_path), provider)
     with TestClient(app) as client:
         response = client.post("/api/transfer", json={"device_id": "pi"})
         assert response.status_code == 200
@@ -162,7 +190,7 @@ def test_sonos_device_selection_routes_and_persists(tmp_path: Path) -> None:
     """A selected Sonos room should receive controls and future disk playback."""
     provider = FakeProvider()
     output = FakeOutput()
-    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path))
+    settings = make_settings(tmp_path)
     app = create_app(settings, provider, outputs=[output])
 
     with TestClient(app) as client:
@@ -195,7 +223,7 @@ def test_sonos_transfer_without_context_errors(tmp_path: Path) -> None:
     provider = FakeProvider(context_uri=None)
     output = FakeOutput()
     app = create_app(
-        Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider, outputs=[output]
+        make_settings(tmp_path), provider, outputs=[output]
     )
     with TestClient(app) as client:
         response = client.post("/api/transfer", json={"device_id": "sonos:room"})
@@ -207,7 +235,7 @@ def test_status_reflects_selected_sonos_room(tmp_path: Path) -> None:
     """The now-playing panel should read from Sonos when a room is selected."""
     provider = FakeProvider()
     output = FakeOutput()
-    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path))
+    settings = make_settings(tmp_path)
     app = create_app(settings, provider, outputs=[output])
 
     with TestClient(app) as client:
@@ -225,7 +253,7 @@ def test_eject_stops_local_output(tmp_path: Path) -> None:
     """Ejecting a disk should stop playback and clear the local queue."""
     provider = FakeProvider()
     output = FakeOutput()
-    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path), disk_poll_seconds=3600)
+    settings = make_settings(tmp_path, disk_poll_seconds=3600)
     app = create_app(settings, provider, outputs=[output])
 
     with TestClient(app) as client:
@@ -250,7 +278,7 @@ def test_eject_endpoint_stops_selected_output(tmp_path: Path) -> None:
     """POST /api/eject should stop the selected local output immediately."""
     provider = FakeProvider()
     output = FakeOutput()
-    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path))
+    settings = make_settings(tmp_path)
     app = create_app(settings, provider, outputs=[output])
 
     with TestClient(app) as client:
@@ -263,9 +291,68 @@ def test_eject_endpoint_stops_selected_output(tmp_path: Path) -> None:
 def test_eject_endpoint_pauses_spotify_without_local_output(tmp_path: Path) -> None:
     """POST /api/eject pauses Spotify when no local output is selected."""
     provider = FakeProvider()
-    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider)
+    app = create_app(make_settings(tmp_path), provider)
 
     with TestClient(app) as client:
         response = client.post("/api/eject")
         assert response.status_code == 204
         assert ("pause", {}) in provider.calls
+
+
+def test_transport_controls_trigger_floppy_thump(tmp_path: Path) -> None:
+    """Play/pause/next/previous should fire a floppy seek for tactile feedback."""
+    provider = FakeProvider(state_override={"is_playing": False})
+    thumper = FakeThumper()
+    app = create_app(
+        Settings(state_dir=tmp_path, media_roots=str(tmp_path)),
+        provider,
+        thumper=thumper,
+    )
+
+    with TestClient(app) as client:
+        client.post("/api/play", json={"context_uri": "spotify:album:abc"})
+        assert thumper.thumps == 1
+
+        client.post("/api/pause", json={})
+        assert thumper.thumps == 2
+
+        client.post("/api/next", json={})
+        assert thumper.thumps == 3
+
+        client.post("/api/previous", json={})
+        assert thumper.thumps == 4
+
+        # Volume and shuffle are sliders/toggles, not discrete presses.
+        client.post("/api/volume", json={"volume_percent": 50})
+        client.post("/api/shuffle", json={"enabled": True})
+        assert thumper.thumps == 4
+
+
+def test_track_end_watcher_thumps_once_per_track(tmp_path: Path) -> None:
+    """The background watcher thumps once as a track nears its end."""
+    provider = FakeProvider(
+        state_override={
+            "is_playing": True,
+            "duration_ms": 100000,
+            "progress_ms": 99500,
+            "track": "T",
+            "album": "A",
+            "artists": "B",
+        }
+    )
+    thumper = FakeThumper()
+    app = create_app(
+        Settings(state_dir=tmp_path, media_roots=str(tmp_path)),
+        provider,
+        thumper=thumper,
+    )
+
+    with TestClient(app):
+        deadline = time.time() + 2.0
+        while thumper.thumps == 0 and time.time() < deadline:
+            time.sleep(0.05)
+        assert thumper.thumps == 1
+
+        # Same track still near the end: no repeat thump.
+        time.sleep(0.8)
+        assert thumper.thumps == 1

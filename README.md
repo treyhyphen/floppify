@@ -95,6 +95,15 @@ Supported `type` values are `playlist`, `album`, and `artist`. Remove/eject the 
 
 On the Pi, the `floppify-mounter` service actively probes the USB floppy drive and mounts it at `/mnt/floppify` automatically when a disk is inserted, and unmounts + stops playback on eject, so no manual mounting is needed. Ejecting the disk stops playback and clears the active queue. USB Mass Storage is host-polled, so there is no media-change interrupt to key off; the mounter polls fast while a disk is present and backs off while idle. The device, mount point, and poll rates are configurable via `FLOPPIFY_FLOPPY_DEVICE` (default `/dev/sda`), `FLOPPIFY_FLOPPY_MOUNT` (default `/mnt/floppify`), `FLOPPIFY_FLOPPY_POLL` (default `0.3`), and `FLOPPIFY_FLOPPY_POLL_IDLE` (default `1.5`).
 
+## Tactile floppy feedback
+
+Audio is streamed, but the drive still produces its classic seek/grind noise on demand by reading scattered sectors, shuttling the head across the disk. The app triggers this for mechanical feedback:
+
+- **Transport controls** — pressing play/pause or next/previous fires a short floppy seek.
+- **Track transitions** — a background watcher fires a seek ~1 second before the current track ends, so playback feels like it's being read off the disk.
+
+The service user needs read access to the raw floppy device, granted by a udev rule (`/etc/udev/rules.d/99-floppify.rules`, sets the TEAC device to group `plugdev`) plus `SupplementaryGroups=plugdev` in the unit. Disable the effect with `FLOPPIFY_FLOPPY_THUMP_ENABLED=false`; the device path is `FLOPPIFY_FLOPPY_THUMP_DEVICE` (default `/dev/sda`).
+
 ## Playback devices and local audio
 
 The device menu combines Spotify Connect devices with Sonos rooms discovered directly over the local network. Spotify only reports Connect devices that have been active recently; local Sonos discovery does not depend on Spotify's incomplete device list.

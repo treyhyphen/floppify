@@ -1,0 +1,4 @@
+# Floppify: give the service user (member of `plugdev`) read-only access to the
+# TEAC USB floppy's raw block device so the app can trigger mechanical seek
+# noise without root. Mounting is unaffected (root ignores node permissions).
+SUBSYSTEM=="block", ATTRS{manufacturer}=="TEACV0.0", GROUP="plugdev", MODE="0640"

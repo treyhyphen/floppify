@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 User=err
 Group=err
+SupplementaryGroups=plugdev
 WorkingDirectory=/opt/floppify
 EnvironmentFile=-/etc/floppify.env
 ExecStart=/opt/floppify/.venv/bin/uvicorn floppify.main:app --host 0.0.0.0 --port 8000

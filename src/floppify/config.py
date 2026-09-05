@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     sonos_enabled: bool = True
     sonos_discovery_timeout: float = 2.0
     sonos_interface_addr: str | None = None
+    floppy_thump_enabled: bool = True
+    floppy_thump_device: str = "/dev/sda"
 
     @property
     def token_path(self) -> Path:

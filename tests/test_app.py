@@ -53,6 +53,10 @@ class FakeProvider(PlaybackProvider):
     async def command(self, command: str, **kwargs: Any) -> None:
         self.calls.append((command, kwargs))
 
+    async def track_artwork(self, track_id: str) -> str | None:
+        self.calls.append(("track_artwork", track_id))
+        return f"https://example.test/art/{track_id}.jpg"
+
 
 class FakeOutput(PlaybackOutput):
     """Record local-output routing without contacting hardware."""
@@ -84,6 +88,7 @@ class FakeOutput(PlaybackOutput):
             "artists": "Sonos Artist",
             "album": "Sonos Album",
             "artwork": None,
+            "spotify_track_id": "sonos-track-1",
             "context_uri": None,
             "device": {"id": device_id, "name": "Living Room", "volume_percent": 42},
         }
@@ -207,4 +212,6 @@ def test_status_reflects_selected_sonos_room(tmp_path: Path) -> None:
         assert status["selected_device_id"] == "sonos:room"
         assert status["player"]["track"] == "Sonos Track"
         assert status["player"]["progress_ms"] == 30000
+        assert status["player"]["artwork"] == "https://example.test/art/sonos-track-1.jpg"
         assert ("state", "sonos:room") in output.calls
+        assert ("track_artwork", "sonos-track-1") in provider.calls

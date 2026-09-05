@@ -1,9 +1,11 @@
 """Local Sonos discovery and playback using the SoCo library."""
 
 import asyncio
+import re
 import socket
 import time
 from typing import Any
+from urllib.parse import unquote
 
 import soco
 from soco.exceptions import SoCoException
@@ -137,6 +139,7 @@ class SonosOutput(PlaybackOutput):
             "artists": track.get("artist") or "Sonos",
             "album": track.get("album") or "",
             "artwork": None,
+            "spotify_track_id": cls._spotify_track_id(track.get("uri")),
             "context_uri": None,
             "device": {
                 "id": cls._device_id(speaker),
@@ -161,6 +164,7 @@ class SonosOutput(PlaybackOutput):
             "artists": None,
             "album": None,
             "artwork": None,
+            "spotify_track_id": None,
             "context_uri": None,
             "device": {
                 "id": cls._device_id(speaker),
@@ -183,6 +187,14 @@ class SonosOutput(PlaybackOutput):
             return seconds * 1000
         except ValueError:
             return 0
+
+    @staticmethod
+    def _spotify_track_id(uri: str | None) -> str | None:
+        """Extract a Spotify track ID from a Sonos stream URI, if present."""
+        if not uri:
+            return None
+        match = re.search(r"spotify:track:([A-Za-z0-9]+)", unquote(uri))
+        return match.group(1) if match else None
 
     @staticmethod
     def _default_interface_addr() -> str | None:

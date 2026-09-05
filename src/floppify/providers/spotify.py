@@ -128,6 +128,12 @@ class SpotifyProvider(PlaybackProvider):
             "device": payload.get("device"),
         }
 
+    async def track_artwork(self, track_id: str) -> str | None:
+        """Resolve a Spotify track's album artwork URL."""
+        payload = await self._request("GET", f"/tracks/{track_id}")
+        images = (payload.get("album") or {}).get("images") or []
+        return images[0].get("url") if images else None
+
     async def play_context(
         self, context_uri: str, device_id: str | None = None, shuffle: bool | None = None
     ) -> None:

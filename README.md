@@ -94,7 +94,15 @@ Supported `type` values are `playlist`, `album`, and `artist`. Remove/eject the 
 
 ## Playback devices and local audio
 
-The device menu shows every device returned by Spotify Connect. Spotify only reports devices that have been active recently; open Spotify on a phone/desktop and start playback briefly if the list is empty.
+The device menu combines Spotify Connect devices with Sonos rooms discovered directly over the local network. Spotify only reports Connect devices that have been active recently; local Sonos discovery does not depend on Spotify's incomplete device list.
+
+### Sonos
+
+Sonos support is enabled by default. Rooms are labeled `• Sonos` in the picker, and the selected room is saved as the preferred output for future disk insertions. Album and playlist disks replace that Sonos group's queue using the Spotify account already linked in the Sonos app. Artist disks remain Spotify Connect-only.
+
+The Pi and speakers must be reachable across any VLANs, including multicast/SSDP reflection. Set `FLOPPIFY_SONOS_ENABLED=false` to disable discovery.
+
+### Pi audio through Spotify Connect
 
 Install the optional local Spotify Connect receiver:
 

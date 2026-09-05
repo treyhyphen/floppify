@@ -47,6 +47,7 @@ async function command(path, extra = {}) {
 
 function renderStatus(data) {
   state.connected = data.provider.connected;
+  if (!state.selectedDevice && data.selected_device_id) state.selectedDevice = data.selected_device_id;
   $("connect").classList.toggle("hidden", data.provider.configured && data.provider.connected);
   $("connect").textContent = data.provider.configured ? "Connect Spotify" : "Setup Spotify";
 
@@ -98,11 +99,17 @@ async function refreshDevices(showHint = false) {
     select.innerHTML = "";
     if (!devices.length) select.add(new Option("Open Spotify on a device", ""));
     devices.forEach((device) => {
-      const label = `${device.name}${device.is_active ? " • active" : ""}`;
-      select.add(new Option(label, device.id, device.is_active, device.is_active));
+      const source = device.source === "sonos" ? " • Sonos" : "";
+      const active = device.is_active ? " • active" : "";
+      select.add(new Option(`${device.name}${source}${active}`, device.id));
     });
-    state.selectedDevice = select.value || previous || "";
-    if (showHint) toast("Missing a device? Start Spotify on it, then refresh again.");
+    const preferred = previous
+      || devices.find((device) => device.selected)?.id
+      || devices.find((device) => device.is_active)?.id
+      || "";
+    select.value = devices.some((device) => device.id === preferred) ? preferred : "";
+    state.selectedDevice = select.value;
+    if (showHint) toast("Device list refreshed, including locally discovered Sonos rooms.");
   } catch (error) { toast(error.message, true); }
 }
 

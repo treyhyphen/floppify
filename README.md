@@ -99,8 +99,8 @@ On the Pi, the `floppify-mounter` service actively probes the USB floppy drive a
 
 Audio is streamed, but the drive still produces its classic seek/grind noise on demand by reading scattered sectors with direct I/O (bypassing Linux's page cache), shuttling the head across the disk. The app triggers this for mechanical feedback:
 
-- **Transport controls** — pressing play/pause or next/previous fires a short floppy seek.
-- **Track transitions** — a background watcher fires a seek ~1 second before the current track ends, so playback feels like it's being read off the disk.
+- **Play/pause** — fires a short two-seek “click-clack” for immediate tactile feedback.
+- **Track changes** — next/previous and the background watcher ~1 second before the current track ends fire the longer six-seek loading sequence, once per track.
 
 The service user needs read access to the raw floppy device, granted by a udev rule (`/etc/udev/rules.d/99-floppify.rules`, sets the TEAC device to group `plugdev`) plus `SupplementaryGroups=plugdev` in the unit. Disable the effect with `FLOPPIFY_FLOPPY_THUMP_ENABLED=false`; the device path is `FLOPPIFY_FLOPPY_THUMP_DEVICE` (default `/dev/sda`).
 

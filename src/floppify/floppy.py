@@ -9,6 +9,7 @@ floppy.
 
 import asyncio
 import logging
+import mmap
 import os
 import time
 from typing import Protocol
@@ -44,21 +45,26 @@ class FloppyThumper:
         self.seeks = seeks
         self.min_interval = min_interval
         self._last = 0.0
+        self._lock = asyncio.Lock()
 
     async def thump(self) -> None:
         """Fire one seek-read off the event loop, debounced against rapid presses."""
         now = time.monotonic()
-        if now - self._last < self.min_interval:
+        if self._lock.locked() or now - self._last < self.min_interval:
             return
-        self._last = now
-        await asyncio.to_thread(self._thump)
+        async with self._lock:
+            self._last = now
+            await asyncio.to_thread(self._thump)
 
     def _thump(self) -> None:
         """Read scattered sectors to shuttle the drive head for audible feedback."""
+        direct = getattr(os, "O_DIRECT", 0)
         try:
-            fd = os.open(self.device, os.O_RDONLY)
-        except OSError:
+            fd = os.open(self.device, os.O_RDONLY | direct)
+        except OSError as error:
+            LOGGER.warning("Could not open floppy for tactile feedback: %s", error)
             return
+        buffer = mmap.mmap(-1, 4096)
         try:
             try:
                 size = os.lseek(fd, 0, os.SEEK_END)
@@ -71,11 +77,16 @@ class FloppyThumper:
                 half = index // 2
                 offset = half % blocks if index % 2 == 0 else max(0, blocks - 1 - half)
                 try:
-                    os.lseek(fd, offset * BLOCK_SIZE, os.SEEK_SET)
-                    os.read(fd, BLOCK_SIZE)
-                except OSError:
+                    # mmap gives preadv an aligned buffer; O_DIRECT bypasses Linux's
+                    # page cache so every read becomes a physical drive command.
+                    os.preadv(fd, [buffer], offset * BLOCK_SIZE)
+                except OSError as error:
+                    LOGGER.warning("Floppy tactile seek failed: %s", error)
                     break
+            else:
+                LOGGER.info("Floppy tactile feedback: %d physical seeks", self.seeks)
         finally:
+            buffer.close()
             os.close(fd)
 
 

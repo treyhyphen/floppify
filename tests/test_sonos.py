@@ -99,3 +99,11 @@ def test_rejects_unsupported_sonos_artist_context() -> None:
     """SoCo share links do not support Spotify artist contexts."""
     with pytest.raises(OutputError, match="album and playlist"):
         SonosOutput._play_context(FakeSpeaker(), "spotify:artist:abc", False)
+
+
+def test_stop_clears_queue() -> None:
+    """Stopping a room should halt transport and clear the queue."""
+    speaker = FakeSpeaker()
+    SonosOutput._stop(speaker)
+
+    assert speaker.calls == ["stop", "clear"]

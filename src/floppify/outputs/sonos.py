@@ -54,6 +54,11 @@ class SonosOutput(PlaybackOutput):
         speaker = await self._speaker(device_id)
         return await asyncio.to_thread(self._state, speaker)
 
+    async def stop(self, device_id: str) -> None:
+        """Stop playback and clear the room's queue."""
+        speaker = await self._speaker(device_id)
+        await asyncio.to_thread(self._stop, speaker)
+
     async def _refresh(self, force: bool = False) -> None:
         """Refresh the SSDP cache when stale or explicitly requested."""
         cache_fresh = time.monotonic() - self._last_discovery < self.cache_seconds
@@ -239,6 +244,16 @@ class SonosOutput(PlaybackOutput):
                 "Sonos couldn't play this Spotify link — verify Spotify is linked in the "
                 "Sonos app and that the room is reachable"
             ) from exc
+
+    @classmethod
+    def _stop(cls, speaker: Any) -> None:
+        """Synchronously stop playback and clear the room's queue."""
+        coordinator = cls._coordinator(speaker)
+        try:
+            coordinator.stop()
+            coordinator.clear_queue()
+        except SoCoException as exc:
+            raise OutputError(f"Sonos stop failed: {exc}") from exc
 
     @classmethod
     def _command(cls, speaker: Any, command: str, kwargs: dict[str, Any]) -> None:

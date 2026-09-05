@@ -34,3 +34,7 @@ class PlaybackOutput(ABC):
     @abstractmethod
     async def state(self, device_id: str) -> dict[str, Any]:
         """Return the current playback state for a local device."""
+
+    @abstractmethod
+    async def stop(self, device_id: str) -> None:
+        """Stop playback and clear any local queue on a device."""

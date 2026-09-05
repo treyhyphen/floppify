@@ -1,0 +1,14 @@
+[Unit]
+Description=Floppify floppy auto-mount
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/floppify.env
+ExecStart=/usr/bin/python3 /usr/local/bin/floppify-mounter
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

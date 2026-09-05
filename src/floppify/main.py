@@ -150,7 +150,23 @@ def create_app(
         LOGGER.info("Playing %s from %s", disk_config.uri, path)
         await play_target(disk_config.uri, selected_device_id, disk_config.shuffle)
 
-    watcher = DiskWatcher(config.media_root_paths, play_disk, config.disk_poll_seconds)
+    async def stop_playback() -> None:
+        """Stop playback and clear any local queue when media is ejected."""
+        output = output_for(selected_device_id)
+        if output and selected_device_id:
+            await output.stop(selected_device_id)
+        elif playback.connected:
+            try:
+                await playback.command("pause")
+            except Exception:
+                LOGGER.warning("Could not pause Spotify on eject", exc_info=True)
+
+    watcher = DiskWatcher(
+        config.media_root_paths,
+        play_disk,
+        config.disk_poll_seconds,
+        on_eject=stop_playback,
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):

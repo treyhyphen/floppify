@@ -1,0 +1,35 @@
+/* Shared structural rules and state hooks for every Floppify skin. */
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; min-height: 100%; margin: 0; }
+body { overflow: hidden; user-select: none; }
+button, select, input { font: inherit; touch-action: manipulation; }
+button { cursor: pointer; }
+.hidden { display: none !important; }
+
+.shell { min-height: 320px; }
+.art-wrap { position: relative; overflow: hidden; }
+.art-wrap img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.now-playing { min-width: 0; }
+#track, #artist, #album { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.progress { overflow: hidden; }
+.progress div { width: 0; height: 100%; transition: width .4s linear; }
+.time { display: flex; justify-content: space-between; }
+.controls { display: flex; align-items: center; justify-content: center; }
+.control-button { display: grid; place-items: center; }
+.control-button svg { display: block; fill: currentColor; }
+.control-button .icon-pause { display: none; }
+.control-button.playing .icon-play { display: none; }
+.control-button.playing .icon-pause { display: block; }
+
+.skin-picker { display: flex; align-items: center; gap: 6px; }
+.skin-picker span { white-space: nowrap; }
+.taskbar { display: none; }
+
+#toast {
+  position: fixed;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease;
+}
+#toast.show { opacity: 1; }

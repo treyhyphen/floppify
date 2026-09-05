@@ -3,16 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#070707">
+  <meta id="theme-color" name="theme-color" content="#070707">
   <title>Floppify</title>
-  <link rel="stylesheet" href="/static/styles.css?v=controls-green-1">
+  <script src="/static/skins/registry.js?v=skins-1"></script>
+  <script>
+    (() => {
+      const skins = window.FLOPPIFY_SKINS || [];
+      let saved = null;
+      try { saved = localStorage.getItem("floppify-skin"); } catch (_) { /* unavailable */ }
+      const requested = new URLSearchParams(window.location.search).get("skin");
+      const skin = skins.find((item) => item.id === requested)
+        || skins.find((item) => item.id === saved)
+        || skins[0];
+      if (skin) {
+        window.FLOPPIFY_INITIAL_SKIN = skin;
+        document.documentElement.dataset.skin = skin.id;
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/skins/base.css?v=skins-1">
+  <link id="skin-stylesheet" rel="stylesheet" href="/static/skins/spotify.css?v=skin-1">
+  <script>
+    if (window.FLOPPIFY_INITIAL_SKIN) {
+      document.getElementById("skin-stylesheet").href = window.FLOPPIFY_INITIAL_SKIN.stylesheet;
+    }
+  </script>
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
       <div class="brand"><span class="disk-icon">▣</span><strong>FLOPPIFY</strong></div>
       <div id="disk-state" class="status-pill"><i></i><span>Waiting for disk</span></div>
+      <label class="skin-picker" for="skin"><span>SKIN</span><select id="skin" aria-label="Interface skin"></select></label>
       <button id="connect" class="connect hidden" type="button">Connect Spotify</button>
+      <div class="window-buttons" aria-hidden="true"><span>_</span><span>□</span><span>×</span></div>
     </header>
 
     <section class="player">
@@ -60,6 +84,12 @@
     </footer>
     <div id="toast" role="status" aria-live="polite"></div>
   </main>
-  <script src="/static/app.js?v=sonos-transfer-1" defer></script>
+  <footer class="taskbar" aria-hidden="true">
+    <button class="start-button" type="button" tabindex="-1"><span class="start-flag"></span>Start</button>
+    <div class="task-button"><span class="mini-disk">▣</span>Floppify Player</div>
+    <div class="taskbar-spacer"></div>
+    <div class="tray"><span class="tray-led"></span><span id="taskbar-clock">12:00 PM</span></div>
+  </footer>
+  <script src="/static/app.js?v=skins-1" defer></script>
 </body>
 </html>

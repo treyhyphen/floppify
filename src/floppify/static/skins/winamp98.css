@@ -1,0 +1,68 @@
+:root { color-scheme: light; --win-blue: #000080; --silver: #c0c0c0; --edge-light: #fff; --edge-mid: #808080; --edge-dark: #000; --display: #05080d; --lcd: #00ef62; --amber: #f3c341; }
+html, body { background: #008080; }
+body { color: #000; font: 11px/1.15 "MS Sans Serif", Tahoma, Geneva, sans-serif; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
+.shell { position: absolute; top: 14px; left: 50%; width: min(744px, calc(100% - 24px)); height: calc(100vh - 58px); height: calc(100dvh - 58px); transform: translateX(-50%); display: grid; grid-template-rows: 25px minmax(0, 1fr) 68px; padding: 3px; border: 2px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light); background: var(--silver); box-shadow: 2px 2px 0 #0006; }
+.topbar { position: relative; display: flex; align-items: center; min-width: 0; gap: 8px; padding: 2px 58px 2px 4px; color: #fff; background: linear-gradient(90deg, #000080 0%, #1084d0 72%, #000080 100%); font-weight: 700; }
+.brand { display: flex; align-items: center; gap: 5px; white-space: nowrap; letter-spacing: .04em; text-shadow: 1px 1px #000; }
+.disk-icon { display: grid; width: 16px; height: 16px; place-items: center; overflow: hidden; border: 1px solid #fff; color: #a8c8ff; background: #000; font-size: 11px; }
+.brand strong::after { content: " 2.98"; font-weight: 400; }
+.window-buttons { position: absolute; right: 3px; top: 3px; display: flex; gap: 2px; }
+.window-buttons span { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid; border-color: #fff #000 #000 #fff; background: var(--silver); color: #000; font: 700 10px/1 Arial; text-shadow: none; }
+.status-pill { min-width: 0; margin-left: auto; display: flex; align-items: center; gap: 5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 400; }
+.status-pill i { flex: 0 0 auto; width: 8px; height: 8px; border: 1px solid #fff; background: #808080; }
+.status-pill.active i { background: #00ff00; box-shadow: 0 0 3px #00ff00; }
+.status-pill.error i { background: red; }
+.status-pill span { overflow: hidden; text-overflow: ellipsis; }
+.skin-picker { color: #fff; font-size: 9px; }
+.skin-picker select { width: 102px; height: 18px; padding: 0 2px; border: 1px solid #000; background: #fff; color: #000; font-size: 10px; }
+.connect { height: 18px; padding: 0 7px; border: 1px solid; border-color: #fff #000 #000 #fff; background: var(--silver); color: #000; font-size: 10px; font-weight: 700; }
+.player { min-height: 0; display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 9px; margin: 4px 0; padding: 9px; border: 2px solid; border-color: #555 #e8e8e8 #e8e8e8 #555; background: repeating-linear-gradient(0deg, #34363b 0, #34363b 2px, #26282d 2px, #26282d 4px); }
+.art-wrap { align-self: center; justify-self: center; width: min(160px, 100%); aspect-ratio: 1; border: 3px ridge #999; background: #000; box-shadow: 1px 1px 0 #000; image-rendering: auto; }
+.art-wrap::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 18px #0008; }
+.provider-tag { position: absolute; right: 4px; bottom: 4px; padding: 2px 4px; border: 1px solid #64707d; color: var(--lcd); background: #05080ddd; font: 8px/1 "Lucida Console", monospace; }
+.now-playing { align-self: stretch; display: grid; grid-template-rows: auto auto auto auto 1fr auto auto; padding: 9px 11px 8px; border: 3px ridge #555; background: var(--display); color: var(--lcd); box-shadow: inset 0 0 16px #000; }
+.eyebrow { margin: 0 0 3px; color: #8b98a5; font: 9px/1 "Lucida Console", monospace; letter-spacing: .12em; }
+.eyebrow::after { content: "  MPEG 1 LAYER III  44 KHZ"; color: #7d8790; }
+h1 { margin: 0; color: var(--amber); font: 700 clamp(18px, 3.4vw, 28px)/1.2 "Lucida Console", "Courier New", monospace; text-transform: uppercase; text-shadow: 0 0 5px #f3c34155; }
+.artist { margin: 5px 0 0; color: var(--lcd); font: 700 13px/1.2 "Lucida Console", monospace; text-transform: uppercase; }
+.album { margin: 3px 0 7px; color: #8b98a5; font: 10px/1.2 "Lucida Console", monospace; text-transform: uppercase; }
+.progress { align-self: end; height: 10px; padding: 2px; border: 1px inset #666; background: #111; }
+.progress div { background: repeating-linear-gradient(90deg, #00da58 0, #00da58 5px, #003b18 5px, #003b18 7px); transition: none; }
+.time { margin-top: 3px; color: var(--lcd); font: 11px/1 "Lucida Console", monospace; }
+.controls { gap: 5px; margin-top: 6px; padding-top: 5px; border-top: 1px solid #4a4d52; }
+.control-button { width: 43px; height: 31px; padding: 5px; border: 2px solid; border-color: #dedede #151515 #151515 #dedede; border-radius: 0; background: linear-gradient(#aeb1b4, #73767a); color: #151515; box-shadow: inset 1px 1px #eee; }
+.control-button:active, .control-button.selected { border-color: #151515 #dedede #dedede #151515; background: #6d7074; box-shadow: inset 1px 1px #333; transform: translate(1px, 1px); }
+.control-button svg { width: 17px; height: 17px; filter: drop-shadow(1px 1px #ccc); }
+.control-button--primary { color: #002c0d; background: linear-gradient(#9ccf93, #5d8b59); }
+.control-button.selected { color: #00ff58; }
+.device-bar { display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(180px, .72fr); align-items: center; gap: 7px; min-height: 0; padding: 7px; border: 2px solid; border-color: #fff #555 #555 #fff; background: var(--silver); }
+.device-bar > label:first-child { display: flex; align-items: center; gap: 4px; font-weight: 700; white-space: nowrap; }
+.speaker { font-size: 13px; color: #000080; }
+.device-bar select { width: 100%; height: 29px; padding: 2px 23px 2px 5px; border: 2px inset #fff; border-radius: 0; background: #fff; color: #000; }
+.volume { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.volume input { width: 100%; accent-color: #000080; }
+#toast { left: 50%; bottom: 45px; max-width: 74vw; padding: 7px 12px; border: 2px solid; border-color: #fff #000 #000 #fff; background: #ffffcc; color: #000; transform: translate(-50%, 6px); box-shadow: 2px 2px #0008; }
+#toast.show { transform: translate(-50%, 0); }
+#toast.error { color: #a00000; }
+.taskbar { position: fixed; z-index: 90; left: 0; right: 0; bottom: 0; height: 36px; display: flex; align-items: center; gap: 4px; padding: 3px; border-top: 2px solid #fff; background: var(--silver); box-shadow: 0 -1px #808080; }
+.start-button, .task-button, .tray { height: 29px; border: 2px solid; border-color: #fff #000 #000 #fff; background: var(--silver); }
+.start-button { display: flex; align-items: center; gap: 4px; padding: 0 7px 0 4px; font-weight: 700; }
+.start-flag { display: grid; width: 17px; height: 17px; place-items: center; color: #fff; background: conic-gradient(#00a000 0 25%, #ff0 0 50%, #00f 0 75%, #f00 0); font-size: 0; transform: skewY(-5deg); }
+.task-button { min-width: 158px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-color: #000 #fff #fff #000; background: #aaa; font-weight: 700; }
+.task-button .mini-disk { display: grid; width: 16px; height: 16px; place-items: center; color: #55ff76; background: #111; font-size: 11px; }
+.taskbar-spacer { flex: 1; }
+.tray { display: flex; align-items: center; gap: 7px; padding: 0 9px; border-color: #808080 #fff #fff #808080; }
+.tray-led { width: 7px; height: 7px; background: #00a000; }
+#taskbar-clock { min-width: 52px; text-align: center; }
+@media (max-width: 650px) {
+  .shell { top: 6px; width: calc(100% - 12px); height: calc(100dvh - 46px); grid-template-rows: 24px minmax(0, 1fr) 62px; }
+  .player { grid-template-columns: 125px minmax(0, 1fr); padding: 6px; gap: 6px; }
+  .art-wrap { width: 116px; }
+  .now-playing { padding: 6px; }
+  .eyebrow::after { content: "  MP3 44 KHZ"; }
+  .control-button { width: 35px; }
+  .device-bar { grid-template-columns: auto minmax(0, 1fr); padding: 4px; }
+  .volume { grid-column: 1 / -1; }
+  .status-pill { display: none; }
+}

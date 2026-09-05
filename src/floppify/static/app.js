@@ -1,5 +1,31 @@
 const $ = (id) => document.getElementById(id);
 const state = { playing: false, shuffle: false, selectedDevice: "", connected: false };
+const skins = window.FLOPPIFY_SKINS || [];
+
+function applySkin(id, persist = true) {
+  const skin = skins.find((item) => item.id === id) || skins[0];
+  if (!skin) return;
+  document.documentElement.dataset.skin = skin.id;
+  $("skin-stylesheet").href = skin.stylesheet;
+  $("theme-color").content = skin.themeColor;
+  if ($("skin")) $("skin").value = skin.id;
+  if (persist) {
+    try { localStorage.setItem("floppify-skin", skin.id); } catch (_) { /* unavailable */ }
+  }
+}
+
+function initializeSkins() {
+  const select = $("skin");
+  skins.forEach((skin) => select.add(new Option(skin.label, skin.id)));
+  const initial = window.FLOPPIFY_INITIAL_SKIN || skins[0];
+  if (initial) applySkin(initial.id, false);
+  select.addEventListener("change", (event) => applySkin(event.target.value));
+}
+
+function updateTaskbarClock() {
+  const clock = $("taskbar-clock");
+  if (clock) clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
 
 function formatMs(ms = 0) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -117,6 +143,10 @@ async function refreshDevices(showHint = false) {
     if (showHint) toast("Device list refreshed, including locally discovered Sonos rooms.");
   } catch (error) { toast(error.message, true); }
 }
+
+initializeSkins();
+updateTaskbarClock();
+window.setInterval(updateTaskbarClock, 30000);
 
 $("connect").addEventListener("click", () => {
   if ($("connect").textContent.startsWith("Setup")) {

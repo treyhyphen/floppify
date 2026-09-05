@@ -11,6 +11,7 @@ Floppify turns a 3½-inch floppy disk into a physical Spotify album or mixtape. 
 - **Spotify OAuth with PKCE** requires only a public client ID—no client secret is stored on the Pi.
 - **Raspotify/librespot** optionally exposes the Pi's 3.5 mm output as a Spotify Connect device named **Floppify**.
 - **Labwc/Chromium kiosk** launches the touch interface automatically at graphical login.
+- **Skin registry** separates playback behavior from presentation; skins can reposition every shared control with isolated CSS, and the selected skin persists in the kiosk browser.
 
 Spotify playback control and Spotify Connect require a **Spotify Premium** account.
 
@@ -103,6 +104,16 @@ Audio is streamed, but the drive still produces its classic seek/grind noise on 
 - **Track changes** — next/previous and the background watcher ~1 second before the current track ends fire the longer six-seek loading sequence, once per track.
 
 The service user needs read access to the raw floppy device, granted by a udev rule (`/etc/udev/rules.d/99-floppify.rules`, sets the TEAC device to group `plugdev`) plus `SupplementaryGroups=plugdev` in the unit. Disable the effect with `FLOPPIFY_FLOPPY_THUMP_ENABLED=false`; the device path is `FLOPPIFY_FLOPPY_THUMP_DEVICE` (default `/dev/sda`).
+
+## Interface skins
+
+Use the **Skin** selector in the title bar to switch between **Floppify Green** (the original Spotify-inspired layout) and **Winamp 98** (classic Winamp styling on a Windows 98 desktop/taskbar). The choice is stored in browser `localStorage`, so the kiosk reopens with the same skin. A one-time preview can also be opened with `?skin=<skin-id>`, such as `/?skin=winamp98`, without changing the saved choice.
+
+To add another skin:
+
+1. Create `src/floppify/static/skins/<skin-id>.css`. The shared DOM/state rules live in `skins/base.css`; a skin owns placement, sizing, color, typography, and decoration.
+2. Add the skin's ID, label, stylesheet URL, and browser theme color to `skins/registry.js`.
+3. Verify the skin at the Pi display's 800×480 viewport and keep every touch control reachable.
 
 ## Playback devices and local audio
 

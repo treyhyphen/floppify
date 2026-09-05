@@ -7,7 +7,6 @@ from typing import Any
 
 import soco
 from soco.exceptions import SoCoException
-from soco.music_services.accounts import Account
 from soco.plugins.sharelink import ShareLinkPlugin
 
 from .base import OutputError, PlaybackOutput
@@ -149,26 +148,10 @@ class SonosOutput(PlaybackOutput):
             coordinator.play_mode = "SHUFFLE_NOREPEAT" if shuffle else "NORMAL"
             coordinator.play_from_queue(max(queue_position - 1, 0))
         except SoCoException as exc:
-            if not cls._spotify_linked(coordinator):
-                raise OutputError(
-                    "Sonos isn't linked to Spotify yet — open the Sonos app and add "
-                    "Spotify under Settings → Services & Voice → Add a Service, then sign in"
-                ) from exc
             raise OutputError(
-                "Sonos could not play this Spotify link; confirm Spotify is linked in the Sonos app"
+                "Sonos couldn't play this Spotify link — verify Spotify is linked in the "
+                "Sonos app and that the room is reachable"
             ) from exc
-
-    @staticmethod
-    def _spotify_linked(speaker: Any) -> bool:
-        """Return whether the Sonos system has an authorized Spotify account."""
-        try:
-            accounts = Account.get_accounts(speaker)
-        except Exception:
-            return True  # Unknown; surface the upstream error instead of guessing.
-        return any(
-            account.service_type in {"2311", "3079"} and not account.deleted
-            for account in accounts.values()
-        )
 
     @classmethod
     def _command(cls, speaker: Any, command: str, kwargs: dict[str, Any]) -> None:

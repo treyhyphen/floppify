@@ -40,9 +40,10 @@ function deviceBody(extra = {}) {
 
 async function command(path, extra = {}) {
   try {
-    await api(path, { method: "POST", body: deviceBody(extra) });
+    const result = await api(path, { method: "POST", body: deviceBody(extra) });
     await refreshStatus();
-  } catch (error) { toast(error.message, true); }
+    return result;
+  } catch (error) { toast(error.message, true); return null; }
 }
 
 function setPlaying(playing) {
@@ -129,7 +130,10 @@ $("shuffle").addEventListener("click", () => command("/api/shuffle", { enabled: 
 $("refresh").addEventListener("click", () => refreshDevices(true));
 $("devices").addEventListener("change", async (event) => {
   state.selectedDevice = event.target.value;
-  if (state.selectedDevice) await command("/api/transfer");
+  if (state.selectedDevice) {
+    const result = await command("/api/transfer");
+    if (result?.message) toast(result.message);
+  }
 });
 let volumeTimer;
 $("volume").addEventListener("input", (event) => {

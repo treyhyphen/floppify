@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from floppify.config import Settings
 from floppify.main import create_app
+from floppify.outputs import PlaybackOutput
 from floppify.providers.base import PlaybackProvider
 
 
@@ -47,6 +48,26 @@ class FakeProvider(PlaybackProvider):
         self.calls.append((command, kwargs))
 
 
+class FakeOutput(PlaybackOutput):
+    """Record local-output routing without contacting hardware."""
+
+    prefix = "sonos"
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[Any, ...]] = []
+
+    async def devices(self) -> list[dict[str, Any]]:
+        return [{"id": "sonos:room", "name": "Living Room", "source": "sonos"}]
+
+    async def play_context(
+        self, context_uri: str, device_id: str, shuffle: bool | None = None
+    ) -> None:
+        self.calls.append(("play", context_uri, device_id, shuffle))
+
+    async def command(self, command: str, device_id: str, **kwargs: Any) -> None:
+        self.calls.append((command, device_id, kwargs))
+
+
 def test_health_status_and_index(tmp_path: Path) -> None:
     """The kiosk and read-only API should render with provider state."""
     provider = FakeProvider()
@@ -61,7 +82,7 @@ def test_health_status_and_index(tmp_path: Path) -> None:
         assert "FLOPPIFY" in page.text
         assert "viewport-fit=cover" in page.text
         assert "styles.css?v=mobile-footer-1" in page.text
-        assert "app.js?v=controls-1" in page.text
+        assert "app.js?v=sonos-1" in page.text
         css = client.get("/static/styles.css")
         assert css.status_code == 200
         assert "height: 100dvh" in css.text
@@ -92,3 +113,32 @@ def test_transfer_requires_device(tmp_path: Path) -> None:
     app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), FakeProvider())
     with TestClient(app) as client:
         assert client.post("/api/transfer", json={}).status_code == 422
+
+
+def test_sonos_device_selection_routes_and_persists(tmp_path: Path) -> None:
+    """A selected Sonos room should receive controls and future disk playback."""
+    provider = FakeProvider()
+    output = FakeOutput()
+    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path))
+    app = create_app(settings, provider, outputs=[output])
+
+    with TestClient(app) as client:
+        devices = client.get("/api/devices").json()["devices"]
+        assert {device["id"] for device in devices} == {"pi", "sonos:room"}
+
+        assert client.post("/api/transfer", json={"device_id": "sonos:room"}).status_code == 204
+        assert settings.selected_device_path.read_text() == "sonos:room"
+        assert output.calls[-1] == ("transfer", "sonos:room", {})
+
+        response = client.post(
+            "/api/play",
+            json={"context_uri": "spotify:playlist:abc", "shuffle": True},
+        )
+        assert response.status_code == 204
+        assert output.calls[-1] == (
+            "play",
+            "spotify:playlist:abc",
+            "sonos:room",
+            True,
+        )
+        assert client.get("/api/status").json()["selected_device_id"] == "sonos:room"

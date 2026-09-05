@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any
@@ -15,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from .config import Settings
 from .disk import DiskWatcher
 from .models import DeviceRequest, PlayRequest, ShuffleRequest, VolumeRequest
+from .outputs import PlaybackOutput, SonosOutput
 from .providers import PlaybackProvider, SpotifyProvider
 
 LOGGER = logging.getLogger(__name__)
@@ -22,20 +24,68 @@ PACKAGE_DIR = Path(__file__).parent
 
 
 def create_app(
-    settings: Settings | None = None, provider: PlaybackProvider | None = None
+    settings: Settings | None = None,
+    provider: PlaybackProvider | None = None,
+    outputs: list[PlaybackOutput] | None = None,
 ) -> FastAPI:
     """Create the Floppify web application with injectable dependencies."""
     config = settings or Settings()
     playback = provider or SpotifyProvider(
         config.spotify_client_id, config.spotify_redirect_uri, config.token_path
     )
+    local_outputs = outputs
+    if local_outputs is None:
+        local_outputs = (
+            [
+                SonosOutput(
+                    discovery_timeout=config.sonos_discovery_timeout,
+                    interface_addr=config.sonos_interface_addr,
+                )
+            ]
+            if config.sonos_enabled
+            else []
+        )
+    try:
+        selected_device_id = config.selected_device_path.read_text().strip() or None
+    except (FileNotFoundError, PermissionError):
+        selected_device_id = None
+
+    def output_for(device_id: str | None) -> PlaybackOutput | None:
+        """Return the local-output adapter owning a device identifier."""
+        return next((output for output in local_outputs if output.handles(device_id)), None)
+
+    async def play_target(
+        context_uri: str, device_id: str | None, shuffle: bool | None
+    ) -> None:
+        """Route playback to Spotify Connect or a local output adapter."""
+        output = output_for(device_id)
+        if output and device_id:
+            await output.play_context(context_uri, device_id, shuffle)
+        else:
+            await playback.play_context(context_uri, device_id, shuffle)
+
+    async def command_target(command: str, device_id: str | None, **kwargs: Any) -> None:
+        """Route a control command to the selected output implementation."""
+        output = output_for(device_id)
+        if output and device_id:
+            await output.command(command, device_id, **kwargs)
+        else:
+            await playback.command(command, device_id=device_id, **kwargs)
+
+    def save_selected_device(device_id: str) -> None:
+        """Persist the preferred output atomically with owner-only permissions."""
+        config.selected_device_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = config.selected_device_path.with_suffix(".tmp")
+        temporary.write_text(device_id)
+        os.chmod(temporary, 0o600)
+        temporary.replace(config.selected_device_path)
 
     async def play_disk(disk_config: Any, path: Path) -> None:
         """Start playback when the disk watcher emits a valid instruction."""
         if disk_config.provider != playback.name:
             raise RuntimeError(f"Provider {disk_config.provider!r} is not installed")
         LOGGER.info("Playing %s from %s", disk_config.uri, path)
-        await playback.play_context(disk_config.uri, shuffle=disk_config.shuffle)
+        await play_target(disk_config.uri, selected_device_id, disk_config.shuffle)
 
     watcher = DiskWatcher(config.media_root_paths, play_disk, config.disk_poll_seconds)
 
@@ -87,6 +137,7 @@ def create_app(
                 "connected": playback.connected,
             },
             "disk": watcher.status(),
+            "selected_device_id": selected_device_id,
             "player": player,
             "error": error,
         }
@@ -94,10 +145,23 @@ def create_app(
     @app.get("/api/devices")
     async def devices() -> dict[str, Any]:
         """List playback targets from the active provider."""
-        try:
-            return {"devices": await playback.devices()}
-        except Exception as exc:
-            raise provider_error(exc) from exc
+        results = await asyncio.gather(
+            playback.devices(),
+            *(output.devices() for output in local_outputs),
+            return_exceptions=True,
+        )
+        device_list: list[dict[str, Any]] = []
+        warnings = []
+        for result in results:
+            if isinstance(result, BaseException):
+                warnings.append(str(result))
+            else:
+                device_list.extend(result)
+        for device in device_list:
+            device["selected"] = device.get("id") == selected_device_id
+        if not device_list and warnings:
+            raise provider_error(RuntimeError("; ".join(warnings)))
+        return {"devices": device_list, "warnings": warnings}
 
     @app.get("/auth/spotify/login")
     async def spotify_login() -> RedirectResponse:
@@ -128,6 +192,7 @@ def create_app(
     async def play(request: PlayRequest) -> None:
         """Play the current disk context or resume current playback."""
         try:
+            device_id = request.device_id or selected_device_id
             context_uri = request.context_uri
             if not context_uri and watcher.current_config:
                 context_uri = watcher.current_config.uri
@@ -135,9 +200,9 @@ def create_app(
                 shuffle = request.shuffle
                 if shuffle is None and watcher.current_config:
                     shuffle = watcher.current_config.shuffle
-                await playback.play_context(context_uri, request.device_id, shuffle)
+                await play_target(context_uri, device_id, shuffle)
             else:
-                await playback.command("resume", device_id=request.device_id)
+                await command_target("resume", device_id)
         except Exception as exc:
             raise provider_error(exc) from exc
 
@@ -145,7 +210,7 @@ def create_app(
     async def pause(request: DeviceRequest) -> None:
         """Pause playback."""
         try:
-            await playback.command("pause", device_id=request.device_id)
+            await command_target("pause", request.device_id or selected_device_id)
         except Exception as exc:
             raise provider_error(exc) from exc
 
@@ -153,7 +218,7 @@ def create_app(
     async def next_track(request: DeviceRequest) -> None:
         """Skip to the next track."""
         try:
-            await playback.command("next", device_id=request.device_id)
+            await command_target("next", request.device_id or selected_device_id)
         except Exception as exc:
             raise provider_error(exc) from exc
 
@@ -161,7 +226,7 @@ def create_app(
     async def previous_track(request: DeviceRequest) -> None:
         """Return to the previous track."""
         try:
-            await playback.command("previous", device_id=request.device_id)
+            await command_target("previous", request.device_id or selected_device_id)
         except Exception as exc:
             raise provider_error(exc) from exc
 
@@ -169,8 +234,8 @@ def create_app(
     async def shuffle(request: ShuffleRequest) -> None:
         """Set provider shuffle mode."""
         try:
-            await playback.command(
-                "shuffle", device_id=request.device_id, enabled=request.enabled
+            await command_target(
+                "shuffle", request.device_id or selected_device_id, enabled=request.enabled
             )
         except Exception as exc:
             raise provider_error(exc) from exc
@@ -179,8 +244,10 @@ def create_app(
     async def volume(request: VolumeRequest) -> None:
         """Set the active playback device volume."""
         try:
-            await playback.command(
-                "volume", device_id=request.device_id, volume_percent=request.volume_percent
+            await command_target(
+                "volume",
+                request.device_id or selected_device_id,
+                volume_percent=request.volume_percent,
             )
         except Exception as exc:
             raise provider_error(exc) from exc
@@ -188,10 +255,13 @@ def create_app(
     @app.post("/api/transfer", status_code=204)
     async def transfer(request: DeviceRequest) -> None:
         """Transfer playback to a selected device."""
+        nonlocal selected_device_id
         if not request.device_id:
             raise HTTPException(status_code=422, detail="device_id is required")
         try:
-            await playback.command("transfer", device_id=request.device_id)
+            await command_target("transfer", request.device_id)
+            selected_device_id = request.device_id
+            save_selected_device(request.device_id)
         except Exception as exc:
             raise provider_error(exc) from exc
 

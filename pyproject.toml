@@ -16,6 +16,7 @@ dependencies = [
   "jinja2>=3.1,<4",
   "pydantic-settings>=2.6,<3",
   "python-multipart>=0.0.18,<1",
+  "soco>=0.31,<1",
   "uvicorn[standard]>=0.32,<1",
 ]
 

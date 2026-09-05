@@ -31,8 +31,6 @@ install -o root -g root -m 644 "$SOURCE_DIR/deploy/floppify.service" /etc/system
 install -o root -g root -m 755 "$SOURCE_DIR/deploy/launch-kiosk.sh" /usr/local/bin/floppify-kiosk
 install -o root -g root -m 755 "$SOURCE_DIR/scripts/floppify-mounter.py" /usr/local/bin/floppify-mounter
 install -o root -g root -m 644 "$SOURCE_DIR/deploy/floppify-mounter.service" /etc/systemd/system/floppify-mounter.service
-install -o root -g root -m 755 "$SOURCE_DIR/scripts/floppify-media-changed" /usr/local/bin/floppify-media-changed
-install -o root -g root -m 644 "$SOURCE_DIR/deploy/99-floppify.rules" /etc/udev/rules.d/99-floppify.rules
 
 install -d -o "$INSTALL_USER" -g "$INSTALL_USER" -m 755 "$USER_HOME/.config/labwc"
 AUTOSTART="$USER_HOME/.config/labwc/autostart"
@@ -48,8 +46,6 @@ systemctl enable floppify.service
 systemctl restart floppify.service
 systemctl enable floppify-mounter.service
 systemctl restart floppify-mounter.service
-udevadm control --reload-rules
-udevadm trigger --subsystem-match=block
 systemctl --no-pager --full status floppify.service || true
 printf '\nFloppify is installed. Configure /etc/floppify.env, then run:\n'
 printf '  sudo systemctl restart floppify\n'

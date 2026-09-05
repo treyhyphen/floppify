@@ -1,4 +1,0 @@
-# Floppify: react to floppy media insert/eject. The TEAC USB floppy stays
-# attached as a fixed block device; media changes surface as a "change" uevent
-# (capacity change) rather than a USB hotplug event.
-SUBSYSTEM=="block", ACTION=="change", ATTRS{manufacturer}=="TEACV0.0", RUN+="/usr/local/bin/floppify-media-changed"

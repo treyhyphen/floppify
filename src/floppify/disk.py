@@ -83,15 +83,16 @@ class DiskWatcher:
         }
 
     def _find_configs(self) -> set[Path]:
-        """Find supported config filenames one directory below each media root."""
+        """Find configs at a root or common ``/media/user/label`` mount depth."""
         found: set[Path] = set()
         for root in self.roots:
             if not root.exists():
                 continue
-            candidates = [root, *(entry for entry in root.iterdir() if entry.is_dir())]
-            for directory in candidates:
-                for name in CONFIG_NAMES:
-                    candidate = directory / name
-                    if candidate.is_file():
-                        found.add(candidate)
+            for name in CONFIG_NAMES:
+                candidates = (
+                    root / name,
+                    *root.glob(f"*/{name}"),
+                    *root.glob(f"*/*/{name}"),
+                )
+                found.update(candidate for candidate in candidates if candidate.is_file())
         return found

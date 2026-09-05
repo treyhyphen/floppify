@@ -15,8 +15,8 @@ async def test_disk_watcher_emits_new_valid_disk_once(tmp_path: Path) -> None:
     async def inserted(config, path):
         calls.append((config, path))
 
-    disk = tmp_path / "MIXTAPE"
-    disk.mkdir()
+    disk = tmp_path / "desktop-user" / "MIXTAPE"
+    disk.mkdir(parents=True)
     config_path = disk / "floppify.json"
     config_path.write_text(
         '{"version":1,"provider":"spotify","type":"playlist",'

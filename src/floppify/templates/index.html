@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#070707">
   <title>Floppify</title>
-  <link rel="stylesheet" href="/static/styles.css?v=mobile-footer-1">
+  <link rel="stylesheet" href="/static/styles.css?v=controls-green-1">
 </head>
 <body>
   <main class="shell">
@@ -33,11 +33,22 @@
         <div class="time"><span id="elapsed">0:00</span><span id="duration">0:00</span></div>
 
         <div class="controls">
-          <button id="shuffle" class="icon-button" type="button" aria-label="Toggle shuffle">⤨</button>
-          <button id="previous" class="icon-button" type="button" aria-label="Previous track">◀▌</button>
-          <button id="play" class="play-button" type="button" aria-label="Play or pause">▶</button>
-          <button id="next" class="icon-button" type="button" aria-label="Next track">▌▶</button>
-          <button id="refresh" class="icon-button" type="button" aria-label="Refresh devices">↻</button>
+          <button id="shuffle" class="control-button" type="button" aria-label="Toggle shuffle" title="Shuffle">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.926 1.185 1.327 1.9.4-.715.837-1.348 1.327-1.9C9.573 4.24 11.198 3 13.4 3h.5a.5.5 0 0 1 0 1h-.5c-1.842 0-3.163.99-4.022 1.956-.84.945-1.38 2.093-1.7 3.244.32 1.15.86 2.3 1.7 3.244.86.966 2.18 1.956 4.022 1.956h.5a.5.5 0 0 1 0 1h-.5c-2.202 0-3.827-1.24-4.874-2.418A10.6 10.6 0 0 1 6.1 9.61a10.6 10.6 0 0 1-1.226 1.808C3.827 11.76 2.202 13 1 13H.5a.5.5 0 0 1 0-1H1c1.842 0 3.163-.99 4.022-1.956A9.6 9.6 0 0 0 6.722 6.8a9.6 9.6 0 0 0-1.7-3.244C4.163 2.49 2.842 1.5 1 1.5H.5A.5.5 0 0 1 0 .5z"/></svg>
+          </button>
+          <button id="previous" class="control-button" type="button" aria-label="Previous track" title="Previous">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6z"/><path d="M20 6l-9 6 9 6z"/></svg>
+          </button>
+          <button id="play" class="control-button control-button--primary" type="button" aria-label="Play" title="Play or pause">
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+          </button>
+          <button id="next" class="control-button" type="button" aria-label="Next track" title="Next">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2z"/><path d="M4 6l9 6-9 6z"/></svg>
+          </button>
+          <button id="refresh" class="control-button" type="button" aria-label="Refresh devices" title="Refresh devices">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+          </button>
         </div>
       </div>
     </section>
@@ -49,6 +60,6 @@
     </footer>
     <div id="toast" role="status" aria-live="polite"></div>
   </main>
-  <script src="/static/app.js?v=sonos-1" defer></script>
+  <script src="/static/app.js?v=controls-green-1" defer></script>
 </body>
 </html>

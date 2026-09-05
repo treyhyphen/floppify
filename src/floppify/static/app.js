@@ -19,12 +19,19 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
+  const text = await response.text();
+  let payload = null;
+  if (text) {
+    try { payload = JSON.parse(text); }
+    catch (_) { payload = text; }
+  }
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
-    try { message = (await response.json()).detail || message; } catch (_) { /* no JSON */ }
+    if (typeof payload === "string") message = payload;
+    else if (payload?.detail) message = payload.detail;
     throw new Error(message);
   }
-  return response.status === 204 ? null : response.json();
+  return payload;
 }
 
 function deviceBody(extra = {}) {
@@ -82,7 +89,7 @@ async function refreshStatus() {
   catch (error) { toast(error.message, true); }
 }
 
-async function refreshDevices() {
+async function refreshDevices(showHint = false) {
   if (!state.connected) return;
   try {
     const { devices } = await api("/api/devices");
@@ -95,6 +102,7 @@ async function refreshDevices() {
       select.add(new Option(label, device.id, device.is_active, device.is_active));
     });
     state.selectedDevice = select.value || previous || "";
+    if (showHint) toast("Missing a device? Start Spotify on it, then refresh again.");
   } catch (error) { toast(error.message, true); }
 }
 
@@ -107,7 +115,7 @@ $("play").addEventListener("click", () => command(state.playing ? "/api/pause" :
 $("previous").addEventListener("click", () => command("/api/previous"));
 $("next").addEventListener("click", () => command("/api/next"));
 $("shuffle").addEventListener("click", () => command("/api/shuffle", { enabled: !state.shuffle }));
-$("refresh").addEventListener("click", refreshDevices);
+$("refresh").addEventListener("click", () => refreshDevices(true));
 $("devices").addEventListener("change", async (event) => {
   state.selectedDevice = event.target.value;
   if (state.selectedDevice) await command("/api/transfer");

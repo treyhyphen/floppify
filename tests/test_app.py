@@ -244,3 +244,28 @@ def test_eject_stops_local_output(tmp_path: Path) -> None:
         config_path.unlink()
         asyncio.run(watcher.scan_once())
         assert ("stop", "sonos:room") in output.calls
+
+
+def test_eject_endpoint_stops_selected_output(tmp_path: Path) -> None:
+    """POST /api/eject should stop the selected local output immediately."""
+    provider = FakeProvider()
+    output = FakeOutput()
+    settings = Settings(state_dir=tmp_path, media_roots=str(tmp_path))
+    app = create_app(settings, provider, outputs=[output])
+
+    with TestClient(app) as client:
+        client.post("/api/transfer", json={"device_id": "sonos:room"})
+        response = client.post("/api/eject")
+        assert response.status_code == 204
+        assert ("stop", "sonos:room") in output.calls
+
+
+def test_eject_endpoint_pauses_spotify_without_local_output(tmp_path: Path) -> None:
+    """POST /api/eject pauses Spotify when no local output is selected."""
+    provider = FakeProvider()
+    app = create_app(Settings(state_dir=tmp_path, media_roots=str(tmp_path)), provider)
+
+    with TestClient(app) as client:
+        response = client.post("/api/eject")
+        assert response.status_code == 204
+        assert ("pause", {}) in provider.calls

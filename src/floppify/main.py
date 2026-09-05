@@ -340,6 +340,15 @@ def create_app(
         except Exception as exc:
             raise provider_error(exc) from exc
 
+    @app.post("/api/eject", status_code=204)
+    async def eject() -> None:
+        """Stop playback and clear the queue immediately (udev fast path)."""
+        try:
+            LOGGER.info("Eject: stopping playback")
+            await stop_playback()
+        except Exception as exc:
+            raise provider_error(exc) from exc
+
     @app.post("/api/transfer")
     async def transfer(request: DeviceRequest) -> dict[str, str]:
         """Transfer playback to a selected device and persist the choice."""
